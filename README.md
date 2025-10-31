@@ -1,40 +1,14 @@
-# TRIP - Bus Travel Website HTML Template
+# Landing Page - VAS Centro de Estética
 
-A simple, responsive, and modern bus travel template built using HTML5, CSS3, and JavaScript.
+Esta es una landing page para VAS Centro de Estética, un centro de belleza en Bahía Blanca. La página está actualmente en una fase primitiva de desarrollo y se encuentra en producción.
 
-## 🚀 Preview
+## Funcionalidades
 
-- [Live Demo](https://themewagon.github.io/BusTraveller/)
+*   Visualización de servicios de estética.
+*   Sistema de reserva de turnos (en desarrollo).
 
-## 📥 Download
+## Clonar el repositorio
 
-- [Download](https://github.com/prashtt/BusTravel-website)
-
-## 🛠 Getting Started
-
-1. **Clone the repository**
-
-   ```bash
-   git clone https://github.com/themewagon/BusTraveller
-   ```
-
-2. Navigate to the Project Folder
-
+```bash
+git clone https://github.com/Etiketaa/landing-vas.git
 ```
-
-cd BusTraveller
-
-```
-
-3. Open the index.html in Browser
-
-## Author
-
-Design and UI concepts are crafted by [Code Prashtt](https://github.com/prashtt).
-
-## License
-
-- Design and code © [Code Prashtt](https://github.com/prashtt).
-- This project is licensed under the MIT License — free for personal and commercial use.
-- Distributed by [ThemeWagon](https://themewagon.com)
-"# landing-vas" 
