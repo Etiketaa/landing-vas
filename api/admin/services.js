@@ -63,21 +63,27 @@ router.put('/services/:id', async (req, res) => {
 router.delete('/services/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    console.log('Deleting service:', id);
 
-    await supabase.from('employee_services').delete().eq('service_id', id);
+    const { error: esError } = await supabase.from('employee_services').delete().eq('service_id', id);
+    if (esError) console.log('employee_services delete error:', esError);
 
-    await supabase.from('bookings').delete().eq('service_id', id);
+    const { error: bError } = await supabase.from('bookings').delete().eq('service_id', id);
+    if (bError) console.log('bookings delete error:', bError);
 
-    const { error } = await supabase
+    const { error, data } = await supabase
       .from('services')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .select();
+
+    console.log('services delete result:', { error, data });
 
     if (error) throw error;
     res.json({ message: 'Servicio eliminado' });
   } catch (err) {
     console.error('Delete service error:', err);
-    res.status(500).json({ error: 'Error al eliminar servicio' });
+    res.status(500).json({ error: 'Error al eliminar servicio: ' + (err.message || err.hint || JSON.stringify(err)) });
   }
 });
 
