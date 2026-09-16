@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - VAS Centro de Estetica</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --gold: #c9a96e;
+      --gold-light: #e2c992;
+      --gold-dark: #a8893f;
+      --brown-dark: #3d2b1f;
+      --brown-medium: #5a3e28;
+      --brown-light: #8b6f47;
+      --cream: #faf5f0;
+      --white: #ffffff;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--cream);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .login-container {
+      background: var(--white);
+      padding: 48px 40px;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+
+    .logo {
+      margin-bottom: 32px;
+    }
+
+    .logo h1 {
+      font-family: 'Playfair Display', serif;
+      color: var(--brown-dark);
+      font-size: 28px;
+      letter-spacing: 2px;
+    }
+
+    .logo p {
+      color: var(--brown-light);
+      font-size: 14px;
+      margin-top: 8px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+      text-align: left;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      color: var(--brown-medium);
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      font-size: 15px;
+      font-family: 'DM Sans', sans-serif;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--gold);
+    }
+
+    .btn-login {
+      width: 100%;
+      padding: 16px;
+      background: var(--gold);
+      color: var(--brown-dark);
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 8px;
+    }
+
+    .btn-login:hover {
+      background: var(--gold-dark);
+      transform: translateY(-1px);
+    }
+
+    .btn-login:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .error {
+      color: #d32f2f;
+      font-size: 14px;
+      margin-top: 16px;
+      display: none;
+    }
+
+    .error.show {
+      display: block;
+    }
+
+    .back-link {
+      display: block;
+      margin-top: 24px;
+      color: var(--brown-light);
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .back-link:hover {
+      color: var(--gold-dark);
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="logo">
+      <h1>VAS</h1>
+      <p>Panel de Administracion</p>
+    </div>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" required autocomplete="email">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Contrasena</label>
+        <input type="password" id="password" required autocomplete="current-password">
+      </div>
+
+      <button type="submit" class="btn-login" id="btnLogin">Ingresar</button>
+
+      <div class="error" id="error"></div>
+    </form>
+
+    <a href="/" class="back-link">Volver al sitio</a>
+  </div>
+
+  <script>
+    const form = document.getElementById('loginForm');
+    const error = document.getElementById('error');
+    const btnLogin = document.getElementById('btnLogin');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      error.classList.remove('show');
+      btnLogin.disabled = true;
+      btnLogin.textContent = 'Ingresando...';
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: document.getElementById('email').value,
+            password: document.getElementById('password').value
+          })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Error al iniciar sesion');
+        }
+
+        localStorage.setItem('admin_token', data.token);
+        localStorage.setItem('admin_user', JSON.stringify(data.user));
+        window.location.href = '/admin/';
+      } catch (err) {
+        error.textContent = err.message;
+        error.classList.add('show');
+      } finally {
+        btnLogin.disabled = false;
+        btnLogin.textContent = 'Ingresar';
+      }
+    });
+  </script>
+</body>
+</html>
