@@ -3,6 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#c9a96e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="VAS Admin">
+  <link rel="manifest" href="/admin/manifest.json">
   <title>Admin - VAS Centro de Estetica</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -75,14 +80,38 @@
     .cash-card .value { font-size: 28px; font-weight: 700; color: var(--brown-dark); font-family: 'Playfair Display', serif; }
     .empty-state { text-align: center; padding: 48px 24px; color: var(--brown-light); }
     .empty-state p { margin-bottom: 16px; }
-    @media (max-width: 768px) { .sidebar { display: none; } .main { margin-left: 0; padding: 16px; } .page-header { flex-direction: column; gap: 16px; align-items: flex-start; } }
+    .nav-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; background: #d32f2f; color: white; border-radius: 10px; font-size: 11px; font-weight: 600; margin-left: auto; }
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+    .calendar-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 8px; }
+    .calendar-header span { text-align: center; font-size: 12px; font-weight: 600; color: var(--brown-medium); padding: 8px 0; }
+    .calendar-day { min-height: 80px; background: var(--white); border-radius: 8px; padding: 8px; cursor: pointer; transition: all 0.2s; border: 2px solid transparent; }
+    .calendar-day:hover { border-color: var(--gold); }
+    .calendar-day.today { border-color: var(--gold); background: #fdf8ef; }
+    .calendar-day.selected { border-color: var(--gold-dark); background: #fdf6ec; }
+    .calendar-day.other-month { opacity: 0.3; }
+    .calendar-day .day-num { font-size: 13px; font-weight: 600; color: var(--brown-dark); margin-bottom: 4px; }
+    .calendar-day .day-dot { width: 6px; height: 6px; background: var(--gold); border-radius: 50%; display: inline-block; margin: 1px; }
+    .calendar-day .day-count { font-size: 10px; color: var(--brown-light); margin-top: 4px; }
+    .mobile-header { display: none; background: var(--brown-dark); color: var(--white); padding: 16px; position: sticky; top: 0; z-index: 50; }
+    .mobile-header h1 { font-family: 'Playfair Display', serif; font-size: 20px; letter-spacing: 2px; }
+    .mobile-header .notif-btn { position: relative; background: rgba(255,255,255,0.1); border: none; color: var(--white); width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 20px; }
+    .mobile-header .notif-badge { position: absolute; top: 0; right: 0; min-width: 16px; height: 16px; background: #d32f2f; border-radius: 8px; font-size: 10px; display: flex; align-items: center; justify-content: center; }
+    @media (max-width: 768px) { .sidebar { display: none; } .mobile-header { display: flex; align-items: center; justify-content: space-between; } .main { margin-left: 0; padding: 16px; padding-top: 0; } .page-header { flex-direction: column; gap: 16px; align-items: flex-start; } }
   </style>
 </head>
 <body>
+  <div class="mobile-header">
+    <h1>VAS</h1>
+    <button class="notif-btn" onclick="document.querySelector('[data-page=dashboard]').click()">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span class="notif-badge" id="mobileNotifBadge" style="display:none">0</span>
+    </button>
+  </div>
+
   <aside class="sidebar">
     <div class="sidebar-header"><h1>VAS</h1><p>Centro de Estetica</p></div>
     <nav class="sidebar-nav">
-      <a class="nav-item active" data-page="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard</a>
+      <a class="nav-item active" data-page="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard<span class="nav-badge" id="notifBadge" style="display:none">0</span></a>
       <a class="nav-item" data-page="services"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Servicios</a>
       <a class="nav-item" data-page="pricing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Precios</a>
       <a class="nav-item" data-page="calendar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Agenda</a>
@@ -150,7 +179,9 @@
     document.getElementById('userEmail').textContent = user.email || '';
     let servicesData = [], employeesData = [];
     const DAYS = ['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
+    const DAYS_SHORT = ['Dom','Lun','Mar','Mie','Jue','Vie','Sab'];
     let selectedDate = new Date().toISOString().split('T')[0];
+    let lastBookingCount = parseInt(localStorage.getItem('vas_last_booking_count') || '0');
 
     document.querySelectorAll('.nav-item').forEach(item => {
       item.addEventListener('click', () => {
@@ -193,6 +224,34 @@
       var el = document.getElementById('todayBookingsTable');
       if (!d.today_bookings.length) { el.innerHTML = '<div class="empty-state"><p>No hay reservas para hoy</p></div>'; return; }
       el.innerHTML = '<table><thead><tr><th>Hora</th><th>Cliente</th><th>Servicio</th><th>Estado</th></tr></thead><tbody>' + d.today_bookings.map(function(b) { return '<tr><td>' + b.booking_time + '</td><td>' + b.client_name + '</td><td>' + (b.services ? b.services.name : '-') + '</td><td><span class="badge badge-' + b.status + '">' + b.status + '</span></td></tr>'; }).join('') + '</tbody></table>';
+      checkNotifications(d.total_bookings || 0);
+    }
+
+    function checkNotifications(totalBookings) {
+      if (totalBookings > lastBookingCount && lastBookingCount > 0) {
+        var newBookings = totalBookings - lastBookingCount;
+        document.getElementById('notifBadge').textContent = newBookings;
+        document.getElementById('notifBadge').style.display = 'inline-flex';
+        document.getElementById('mobileNotifBadge').textContent = newBookings;
+        document.getElementById('mobileNotifBadge').style.display = 'flex';
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('VAS Centro de Estetica', { body: newBookings + ' nuevo(s) turno(s) reservado(s)', icon: '/img/image.webp' });
+        }
+      } else {
+        document.getElementById('notifBadge').style.display = 'none';
+        document.getElementById('mobileNotifBadge').style.display = 'none';
+      }
+      localStorage.setItem('vas_last_booking_count', totalBookings.toString());
+    }
+
+    function clearNotifications() {
+      lastBookingCount = parseInt(localStorage.getItem('vas_last_booking_count') || '0');
+      document.getElementById('notifBadge').style.display = 'none';
+      document.getElementById('mobileNotifBadge').style.display = 'none';
+    }
+
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
     }
 
     async function loadServices() {
@@ -226,7 +285,36 @@
 
     async function loadCalendar() {
       var bookings = await api('/api/admin/bookings?date=' + selectedDate) || [];
-      var html = '<div style="display:flex;gap:16px;align-items:center;margin-bottom:24px"><input type="date" id="calDate" value="' + selectedDate + '" onchange="selectedDate=this.value;loadCalendar()" style="padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;font-family:\'DM Sans\',sans-serif"></div>';
+      var allBookings = await api('/api/admin/bookings/all') || [];
+      var html = '<div style="display:flex;gap:16px;align-items:center;margin-bottom:24px;flex-wrap:wrap">';
+      html += '<input type="date" id="calDate" value="' + selectedDate + '" onchange="selectedDate=this.value;loadCalendar()" style="padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;font-family:\'DM Sans\',sans-serif">';
+      html += '<button class="btn-primary" onclick="openModal(\'booking\')">+ Nueva reserva</button>';
+      html += '</div>';
+      var today = new Date();
+      var year = today.getFullYear();
+      var month = today.getMonth();
+      var firstDay = new Date(year, month, 1).getDay();
+      var daysInMonth = new Date(year, month + 1, 0).getDate();
+      var monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      html += '<h3 style="font-family:\'Playfair Display\',serif;margin-bottom:16px;color:var(--brown-dark)">' + monthNames[month] + ' ' + year + '</h3>';
+      html += '<div class="calendar-header">';
+      for (var d = 0; d < 7; d++) html += '<span>' + DAYS_SHORT[d] + '</span>';
+      html += '</div><div class="calendar-grid">';
+      for (var i = 0; i < firstDay; i++) html += '<div class="calendar-day other-month"></div>';
+      for (var day = 1; day <= daysInMonth; day++) {
+        var dateStr = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+        var isToday = day === today.getDate() && month === today.getMonth();
+        var isSelected = dateStr === selectedDate;
+        var dayBookings = allBookings.filter(function(b) { return b.booking_date === dateStr; });
+        var classes = 'calendar-day' + (isToday ? ' today' : '') + (isSelected ? ' selected' : '');
+        html += '<div class="' + classes + '" onclick="selectedDate=\'' + dateStr + '\';loadCalendar()">';
+        html += '<div class="day-num">' + day + '</div>';
+        for (var j = 0; j < Math.min(dayBookings.length, 3); j++) html += '<span class="day-dot"></span>';
+        if (dayBookings.length > 0) html += '<div class="day-count">' + dayBookings.length + ' turno(s)</div>';
+        html += '</div>';
+      }
+      html += '</div>';
+      html += '<h3 style="font-family:\'Playfair Display\',serif;margin:24px 0 16px;color:var(--brown-dark)">Reservas del ' + selectedDate + '</h3>';
       if (!bookings.length) { html += '<div class="empty-state"><p>No hay reservas para esta fecha</p></div>'; }
       else { html += '<div class="data-table"><table><thead><tr><th>Hora</th><th>Cliente</th><th>Servicio</th><th>Empleado</th><th>Precio</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>' + bookings.map(function(b) { return '<tr><td><strong>' + b.booking_time + '</strong></td><td>' + b.client_name + '</td><td>' + (b.services ? b.services.name : '-') + '</td><td>' + (b.employees ? b.employees.name : 'Sin asignar') + '</td><td>$' + b.final_price + '</td><td><span class="badge badge-' + b.status + '">' + b.status + '</span></td><td><button class="action-btn" onclick="updateBookingStatus(\'' + b.id + '\',\'completed\')">Completar</button><button class="action-btn danger" onclick="updateBookingStatus(\'' + b.id + '\',\'cancelled\')">Cancelar</button></td></tr>'; }).join('') + '</tbody></table></div>'; }
       document.getElementById('calendarView').innerHTML = html;
