@@ -37,7 +37,7 @@ app.use('/api/admin', adminServicesRouter);
 app.use('/api/admin', adminScheduleRouter);
 app.use('/api/admin', adminCashRouter);
 app.use('/api/admin', adminClientsRouter);
-app.use('/api/admin', adminGiftCardsRouter);
+app.use('/api/admin/giftcards', adminGiftCardsRouter);
 app.use('/api/employee/auth', employeeAuthRouter);
 app.use('/api/employee', employeeBookingsRouter);
 app.use('/api/payment', paymentRouter);

@@ -58,3 +58,30 @@ CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
 CREATE INDEX IF NOT EXISTS idx_clients_phone ON clients(phone);
 CREATE INDEX IF NOT EXISTS idx_gift_cards_code ON gift_cards(code);
 CREATE INDEX IF NOT EXISTS idx_employee_sessions_token ON employee_sessions(token);
+
+-- Tabla de sesiones de caja
+CREATE TABLE IF NOT EXISTS cash_sessions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  opened_by uuid REFERENCES auth.users(id),
+  opening_float numeric DEFAULT 0,
+  counted_close numeric,
+  expected_close numeric,
+  variance numeric,
+  closed_by uuid REFERENCES auth.users(id),
+  status text DEFAULT 'OPEN',
+  opened_at timestamptz DEFAULT now(),
+  closed_at timestamptz
+);
+
+-- Tabla de movimientos de caja
+CREATE TABLE IF NOT EXISTS cash_movements (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id uuid REFERENCES cash_sessions(id) ON DELETE CASCADE,
+  type text NOT NULL,
+  source text,
+  booking_id uuid REFERENCES bookings(id),
+  amount numeric NOT NULL,
+  payment_method text DEFAULT 'cash',
+  note text,
+  created_at timestamptz DEFAULT now()
+);
