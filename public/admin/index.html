@@ -119,6 +119,7 @@
       <a class="nav-item" data-page="schedule"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Horarios</a>
       <a class="nav-item" data-page="cash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Caja</a>
       <a class="nav-item" data-page="clients"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Clientes</a>
+      <a class="nav-item" data-page="giftcards"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M16 8V6a4 4 0 0 0-8 0v2"/><line x1="12" y1="12" x2="12" y2="16"/></svg>Gift Cards</a>
     </nav>
     <div class="sidebar-footer">
       <div class="user-info"><strong id="userName">Admin</strong><span id="userEmail"></span></div>
@@ -179,6 +180,16 @@
       <div class="page-header"><h2>Clientes</h2><button class="btn-primary" onclick="openModal('client')">+ Nuevo cliente</button></div>
       <div class="data-table" id="clientsTable"></div>
     </div>
+
+    <div id="page-giftcards" class="page" style="display:none">
+      <div class="page-header"><h2>Gift Cards</h2><button class="btn-primary" onclick="openModal('giftcard')">+ Nueva Gift Card</button></div>
+      <div class="stat-cards">
+        <div class="stat-card"><div class="label">Total Emitidas</div><div class="value" id="gcTotal">0</div></div>
+        <div class="stat-card"><div class="label">Activas</div><div class="value" id="gcActive">0</div></div>
+        <div class="stat-card"><div class="label">Monto Total</div><div class="value" id="gcAmount">$0</div></div>
+      </div>
+      <div class="data-table" id="giftcardsTable"></div>
+    </div>
   </main>
 
   <div class="modal-overlay" id="modalOverlay"><div class="modal" id="modalContent"></div></div>
@@ -222,7 +233,7 @@
     }
 
     function loadPage(page) {
-      var fns = { dashboard: loadDashboard, services: loadServices, pricing: loadPricing, calendar: loadCalendar, employees: loadEmployees, schedule: loadSchedule, cash: loadCash, clients: loadClients };
+      var fns = { dashboard: loadDashboard, services: loadServices, pricing: loadPricing, calendar: loadCalendar, employees: loadEmployees, schedule: loadSchedule, cash: loadCash, clients: loadClients, giftcards: loadGiftCards };
       if (fns[page]) fns[page]();
     }
 
@@ -431,6 +442,7 @@
       else if (type === 'booking') { var sOpts = servicesData.map(function(s) { return '<option value="' + s.id + '">' + s.name + ' - $' + s.base_price + '</option>'; }).join(''); html = '<h3>Nueva reserva</h3><div class="form-group"><label>Nombre cliente</label><input id="mClientName"></div><div class="form-group"><label>Contacto</label><input id="mClientContact"></div><div class="form-group"><label>Servicio</label><select id="mServiceId">' + sOpts + '</select></div><div class="form-group"><label>Fecha</label><input type="date" id="mDate" value="' + selectedDate + '"></div><div class="form-group"><label>Hora</label><input type="time" id="mTime"></div><div class="modal-actions"><button class="btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="saveBooking()">Guardar</button></div>'; }
       else if (type === 'closeCash') { html = '<h3>Cerrar caja</h3><div class="form-group"><label>Monto contado ($)</label><input type="number" step="0.01" id="mCounted"></div><div class="modal-actions"><button class="btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="closeCashSession()">Cerrar caja</button></div>'; }
       else if (type === 'client') { html = '<h3>' + (data ? 'Editar' : 'Nuevo') + ' cliente</h3><div class="form-group"><label>Nombre</label><input id="mName" value="' + (data ? data.name : '') + '"></div><div class="form-group"><label>Email</label><input type="email" id="mEmail" value="' + (data ? data.email || '' : '') + '"></div><div class="form-group"><label>Telefono</label><input id="mPhone" value="' + (data ? data.phone || '' : '') + '"></div><div class="form-group"><label>Notas</label><input id="mNotes" value="' + (data ? data.notes || '' : '') + '"></div><div class="modal-actions"><button class="btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="saveClient(\'' + (data ? data.id : '') + '\')">Guardar</button></div>'; }
+      else if (type === 'giftcard') { html = '<h3>Nueva Gift Card</h3><div class="form-group"><label>Monto ($)</label><input type="number" id="mAmount" min="1" placeholder="5000"></div><div class="form-group"><label>Nombre de quien regala</label><input id="mBuyerName" placeholder="Ej: Maria"></div><div class="form-group"><label>Contacto de quien regala</label><input id="mBuyerContact" placeholder="Ej: @maria"></div><div class="form-group"><label>Nombre de quien recibe</label><input id="mRecipientName" placeholder="Ej: Laura"></div><div class="form-group"><label>Contacto de quien recibe</label><input id="mRecipientContact" placeholder="Ej: @laura"></div><div class="modal-actions"><button class="btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="saveGiftCard()">Crear Gift Card</button></div>'; }
       el.innerHTML = html;
       document.getElementById('modalOverlay').classList.add('show');
     }
@@ -474,6 +486,50 @@
     function editClient(id, data) { openModal('client', data); }
     async function deleteClient(id) { if (!confirm('Eliminar cliente?')) return; await api('/api/admin/clients/' + id, 'DELETE'); loadClients(); }
     async function saveClient(id) { var body = { name: document.getElementById('mName').value, email: document.getElementById('mEmail').value, phone: document.getElementById('mPhone').value, notes: document.getElementById('mNotes').value }; if (id) await api('/api/admin/clients/' + id, 'PUT', body); else await api('/api/admin/clients', 'POST', body); closeModal(); loadClients(); }
+
+    async function saveGiftCard() {
+      var body = {
+        amount: parseFloat(document.getElementById('mAmount').value),
+        buyer_name: document.getElementById('mBuyerName').value,
+        buyer_contact: document.getElementById('mBuyerContact').value,
+        recipient_name: document.getElementById('mRecipientName').value,
+        recipient_contact: document.getElementById('mRecipientContact').value
+      };
+      if (!body.amount || body.amount <= 0) { alert('El monto debe ser mayor a 0'); return; }
+      var res = await api('/api/admin/giftcards', 'POST', body);
+      if (res && res.error) { alert(res.error); return; }
+      closeModal();
+      loadGiftCards();
+      var shareLink = window.location.origin + '/giftcard/?id=' + res.id;
+      var msg = '🎁 Gift Card creada!\n\nCompartilo con ' + (body.recipient_name || 'tu ser querido') + ':\n' + shareLink;
+      alert(msg);
+    }
+
+    async function loadGiftCards() {
+      var cards = await api('/api/admin/giftcards') || [];
+      var el = document.getElementById('giftcardsTable');
+      var active = cards.filter(function(c) { return c.status === 'active'; });
+      var totalAmount = cards.reduce(function(sum, c) { return sum + c.amount; }, 0);
+      document.getElementById('gcTotal').textContent = cards.length;
+      document.getElementById('gcActive').textContent = active.length;
+      document.getElementById('gcAmount').textContent = '$' + totalAmount;
+      if (!cards.length) { el.innerHTML = '<div class="empty-state"><p>No hay gift cards creadas</p></div>'; return; }
+      el.innerHTML = '<table><thead><tr><th>Codigo</th><th>Monto</th><th>Saldo</th><th>De</th><th>Para</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>' + cards.map(function(c) {
+        var statusBadge = c.status === 'active' ? '<span style="color:#388e3c;font-weight:600">Activa</span>' : '<span style="color:#d32f2f;font-weight:600">Canjeada</span>';
+        var shareLink = window.location.origin + '/giftcard/?id=' + c.id;
+        var shareBtn = c.status === 'active' ? '<button class="action-btn" onclick="shareGiftCard(\'' + shareLink + '\',\'' + (c.recipient_name || '') + '\',\'' + c.amount + '\')">Compartir</button>' : '';
+        var deleteBtn = '<button class="action-btn danger" onclick="deleteGiftCard(\'' + c.id + '\')">Eliminar</button>';
+        return '<tr><td><strong>' + c.code + '</strong></td><td>$' + c.amount + '</td><td>$' + c.balance + '</td><td>' + (c.buyer_name || '-') + '</td><td>' + (c.recipient_name || '-') + '</td><td>' + statusBadge + '</td><td>' + shareBtn + deleteBtn + '</td></tr>';
+      }).join('') + '</tbody></table>';
+    }
+
+    function shareGiftCard(link, name, amount) {
+      var msg = 'Hola ' + (name || '') + '! 🎁\n\nRecibiste una Gift Card de VAS Centro de Estetica por $' + amount + '.\n\nMirala aqui: ' + link + '\n\nContactanos para agendar tu turno! ✨';
+      var waLink = 'https://wa.me/?text=' + encodeURIComponent(msg);
+      window.open(waLink, '_blank');
+    }
+
+    async function deleteGiftCard(id) { if (!confirm('Eliminar gift card?')) return; await api('/api/admin/giftcards/' + id, 'DELETE'); loadGiftCards(); }
 
     async function init() {
       await loadServices();

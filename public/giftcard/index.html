@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gift Card - VAS Centro de Estetica</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #2d2013 0%, #4a3020 50%, #2d2013 100%);
+      padding: 20px;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 420px;
+      background: linear-gradient(145deg, #fdf6ec 0%, #f9f0e0 100%);
+      border-radius: 24px;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(212,165,116,0.15) 0%, transparent 60%);
+      animation: shimmer 8s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(20%, 20%); }
+    }
+
+    .card-header {
+      background: linear-gradient(135deg, #2d2013 0%, #4a3020 100%);
+      padding: 32px 28px;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .card-header h1 {
+      font-family: 'Playfair Display', serif;
+      color: #d4a574;
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .card-header p {
+      color: #f0e6d6;
+      font-size: 13px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+
+    .card-body {
+      padding: 32px 28px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .amount-section {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .amount-label {
+      font-size: 12px;
+      color: #8b7355;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+    }
+
+    .amount-value {
+      font-family: 'Playfair Display', serif;
+      font-size: 52px;
+      font-weight: 700;
+      color: #2d2013;
+    }
+
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #d4a574, transparent);
+      margin: 24px 0;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+
+    .info-row .label { color: #8b7355; }
+    .info-row .value { color: #2d2013; font-weight: 600; }
+
+    .code-box {
+      background: #2d2013;
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      margin: 24px 0;
+    }
+
+    .code-label {
+      font-size: 11px;
+      color: #d4a574;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+    }
+
+    .code-value {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: 3px;
+    }
+
+    .message {
+      background: rgba(212,165,116,0.15);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      margin: 24px 0;
+    }
+
+    .message p {
+      font-family: 'Playfair Display', serif;
+      font-size: 16px;
+      color: #2d2013;
+      line-height: 1.5;
+      font-style: italic;
+    }
+
+    .cta-button {
+      display: block;
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #d4a574 0%, #c49464 100%);
+      color: #2d2013;
+      text-align: center;
+      text-decoration: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      transition: transform 0.2s, box-shadow 0.2s;
+      border: none;
+      cursor: pointer;
+    }
+
+    .cta-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(212,165,116,0.4);
+    }
+
+    .card-footer {
+      padding: 20px 28px;
+      text-align: center;
+      border-top: 1px solid rgba(212,165,116,0.2);
+      position: relative;
+      z-index: 1;
+    }
+
+    .card-footer p {
+      font-size: 12px;
+      color: #8b7355;
+    }
+
+    .error-view {
+      text-align: center;
+      padding: 40px;
+    }
+
+    .error-view h2 {
+      font-family: 'Playfair Display', serif;
+      color: #dc3545;
+      margin-bottom: 8px;
+    }
+
+    .error-view p { color: #8b7355; }
+
+    .used-badge {
+      display: inline-block;
+      background: #dc3545;
+      color: white;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 12px;
+    }
+
+    @media (max-width: 480px) {
+      .amount-value { font-size: 42px; }
+      .code-value { font-size: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card" id="giftCard">
+    <div class="card-header">
+      <h1>VAS</h1>
+      <p>Centro de Estetica</p>
+    </div>
+    <div class="card-body">
+      <div class="amount-section">
+        <div class="amount-label">Tarjeta de Regalo</div>
+        <div class="amount-value" id="cardAmount">$0</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="info-row">
+        <span class="label">De</span>
+        <span class="value" id="cardFrom">-</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Para</span>
+        <span class="value" id="cardTo">-</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Saldo disponible</span>
+        <span class="value" id="cardBalance">$0</span>
+      </div>
+
+      <div class="code-box">
+        <div class="code-label">Codigo de tarjeta</div>
+        <div class="code-value" id="cardCode">VAS-XXXX-XXXX</div>
+      </div>
+
+      <div class="message">
+        <p>Recibiste un regalo especial</p>
+      </div>
+
+      <a id="ctaLink" class="cta-button" href="#" target="_blank">
+        Contactanos para agendar tu turno
+      </a>
+
+      <div id="usedNotice" style="display:none;text-align:center;margin-top:16px">
+        <span class="used-badge">Esta tarjeta ya fue canjeada</span>
+      </div>
+    </div>
+    <div class="card-footer">
+      <p>VAS Centro de Estetica</p>
+    </div>
+  </div>
+
+  <div class="error-view" id="errorView" style="display:none">
+    <h2>Tarjeta no encontrada</h2>
+    <p>El enlace no es valido o la tarjeta fue eliminada.</p>
+  </div>
+
+  <script>
+    var API_BASE = window.location.origin;
+    var cardId = new URLSearchParams(window.location.search).get('id');
+    var OWNER_WHATSAPP = '5492914140982';
+
+    async function init() {
+      if (!cardId) {
+        showError();
+        return;
+      }
+
+      try {
+        var res = await fetch(API_BASE + '/api/giftcard/' + cardId);
+        var card = await res.json();
+
+        if (card.error || !card.id) {
+          showError();
+          return;
+        }
+
+        document.getElementById('cardAmount').textContent = '$' + card.amount;
+        document.getElementById('cardBalance').textContent = '$' + card.balance;
+        document.getElementById('cardFrom').textContent = card.buyer_name || 'Anonimo';
+        document.getElementById('cardTo').textContent = card.recipient_name || 'Valorado cliente';
+        document.getElementById('cardCode').textContent = card.code;
+
+        if (card.status === 'used' || card.balance <= 0) {
+          document.getElementById('usedNotice').style.display = 'block';
+          document.getElementById('ctaButton')?.classList.add('disabled');
+        }
+
+        var recipientName = card.recipient_name || '';
+        var buyerName = card.buyer_name || 'Alguien especial';
+        var msg = encodeURIComponent(
+          'Hola VAS Centro de Estetica ✨\n\n' +
+          'Recibi una Gift Card de ' + buyerName + ' por $' + card.amount + '.\n' +
+          'Codigo: ' + card.code + '\n\n' +
+          'Quiero agendar mi turno. ' + (recipientName ? 'Mi nombre es ' + recipientName + '.' : '')
+        );
+        document.getElementById('ctaLink').href = 'https://wa.me/' + OWNER_WHATSAPP + '?text=' + msg;
+
+      } catch (e) {
+        showError();
+      }
+    }
+
+    function showError() {
+      document.getElementById('giftCard').style.display = 'none';
+      document.getElementById('errorView').style.display = 'block';
+    }
+
+    init();
+  </script>
+</body>
+</html>
