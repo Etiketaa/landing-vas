@@ -285,7 +285,13 @@
     }
 
     function editService(id) { openModal('service', servicesData.find(function(x) { return x.id === id; })); }
-    async function deleteService(id) { if (!confirm('Eliminar servicio?')) return; await api('/api/admin/services/' + id, 'DELETE'); loadServices(); }
+    async function deleteService(id) {
+      if (!confirm('Eliminar servicio?')) return;
+      var row = document.querySelector('button[onclick="deleteService(\'' + id + '\')"]').closest('tr');
+      if (row) row.style.opacity = '0.3';
+      await api('/api/admin/services/' + id, 'DELETE');
+      loadServices();
+    }
 
     async function loadPricing() {
       var rules = await api('/api/admin/pricing-rules') || [];
