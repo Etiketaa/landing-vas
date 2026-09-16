@@ -2,10 +2,7 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../../lib/supabase');
 const crypto = require('crypto');
-
-function hashPassword(password) {
-  return crypto.createHash('sha256').update(password).digest('hex');
-}
+const bcrypt = require('bcryptjs');
 
 router.post('/login', async (req, res) => {
   try {
@@ -26,8 +23,8 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Credenciales invalidas' });
     }
 
-    const hashedPassword = hashPassword(password);
-    if (employee.password_hash !== hashedPassword) {
+    const validPassword = await bcrypt.compare(password, employee.password_hash);
+    if (!validPassword) {
       return res.status(401).json({ error: 'Credenciales invalidas' });
     }
 

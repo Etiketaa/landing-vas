@@ -5,8 +5,8 @@ const resend = require('../../lib/resend');
 
 router.get('/', async (req, res) => {
   try {
-    const userAgent = req.headers['user-agent'];
-    if (userAgent !== 'vercel-cron/1.0' && process.env.NODE_ENV === 'production') {
+    const cronSecret = req.headers['x-cron-secret'] || req.query.secret;
+    if (cronSecret !== process.env.CRON_SECRET && process.env.NODE_ENV === 'production') {
       return res.status(403).json({ error: 'Forbidden' });
     }
 

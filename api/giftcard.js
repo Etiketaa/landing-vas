@@ -8,12 +8,16 @@ router.get('/:id', async (req, res) => {
 
     const { data, error } = await supabase
       .from('gift_cards')
-      .select('id, code, amount, balance, buyer_name, recipient_name, status')
+      .select('id, amount, balance, buyer_name, recipient_name, status')
       .eq('id', id)
       .single();
 
     if (error || !data) {
       return res.status(404).json({ error: 'Gift card no encontrada' });
+    }
+
+    if (data.status !== 'active') {
+      return res.json({ id: data.id, status: data.status });
     }
 
     res.json(data);

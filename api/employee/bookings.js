@@ -75,6 +75,11 @@ router.put('/bookings/:id/status', async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
+    const allowedStatuses = ['completed', 'cancelled'];
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Estado no permitido' });
+    }
+
     const { data: booking } = await supabase
       .from('bookings')
       .select('employee_id')

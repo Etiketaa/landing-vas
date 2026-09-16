@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../../lib/supabase');
 const { requireAdmin } = require('../../lib/auth');
+const bcrypt = require('bcryptjs');
 
 router.use(requireAdmin);
 
@@ -178,11 +179,10 @@ router.post('/employees', async (req, res) => {
       return res.status(400).json({ error: 'Si proporciona email, la contraseña es requerida' });
     }
 
-    const crypto = require('crypto');
     const employeeData = { name, email: email || null, phone, cbu: cbu || null, alias: alias || null, active };
     
     if (password) {
-      employeeData.password_hash = crypto.createHash('sha256').update(password).digest('hex');
+      employeeData.password_hash = await bcrypt.hash(password, 10);
     }
 
     const { data: employee, error } = await supabase
@@ -213,11 +213,10 @@ router.put('/employees/:id', async (req, res) => {
     const { id } = req.params;
     const { name, email, password, phone, cbu, alias, active, service_ids } = req.body;
 
-    const crypto = require('crypto');
     const updateData = { name, email: email || null, phone, cbu: cbu || null, alias: alias || null, active };
     
     if (password) {
-      updateData.password_hash = crypto.createHash('sha256').update(password).digest('hex');
+      updateData.password_hash = await bcrypt.hash(password, 10);
     }
 
     const { data: employee, error } = await supabase

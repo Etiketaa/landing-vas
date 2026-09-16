@@ -10,6 +10,10 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Nombre y telefono son requeridos' });
     }
 
+    if (name.length > 200 || phone.length > 20) {
+      return res.status(400).json({ error: 'Campos demasiado largos' });
+    }
+
     const { error } = await supabase
       .from('marketing_leads')
       .insert({

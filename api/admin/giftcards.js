@@ -2,15 +2,17 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../../lib/supabase');
 const { requireAdmin } = require('../../lib/auth');
+const crypto = require('crypto');
 
 router.use(requireAdmin);
 
 function generateCode() {
+  const bytes = crypto.randomBytes(8);
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = 'VAS-';
   for (let i = 0; i < 8; i++) {
     if (i === 4) code += '-';
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
+    code += chars.charAt(bytes[i] % chars.length);
   }
   return code;
 }

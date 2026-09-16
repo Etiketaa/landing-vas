@@ -13,6 +13,10 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Todos los campos son requeridos' });
     }
 
+    if (name.length > 200 || contact.length > 200 || (notes && notes.length > 1000)) {
+      return res.status(400).json({ error: 'Campos demasiado largos' });
+    }
+
     const priceInfo = await calculatePrice(service_id, date, time);
 
     const { data: service } = await supabase
@@ -191,7 +195,7 @@ ${depositAmount > 0 ? `Seña: $${depositAmount.toLocaleString('es-AR')}` : ''}`;
     });
   } catch (err) {
     console.error('Error creating booking:', err.message || err);
-    res.status(500).json({ error: 'Error al reservar turno: ' + (err.message || 'Unknown error') });
+    res.status(500).json({ error: 'Error al reservar turno' });
   }
 });
 

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const supabase = require('../lib/supabase');
+const { requireAdmin } = require('../lib/auth');
 
 router.get('/:bookingId', async (req, res) => {
   try {
@@ -34,7 +35,7 @@ router.get('/:bookingId', async (req, res) => {
 router.post('/:bookingId/upload', async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const { payment_image } = req.body;
+    const { payment_image, client_contact } = req.body;
 
     if (!payment_image) {
       return res.status(400).json({ error: 'Comprobante requerido' });
@@ -42,12 +43,16 @@ router.post('/:bookingId/upload', async (req, res) => {
 
     const { data: booking } = await supabase
       .from('bookings')
-      .select('deposit_deadline, status')
+      .select('deposit_deadline, status, client_contact')
       .eq('id', bookingId)
       .single();
 
     if (!booking) {
       return res.status(404).json({ error: 'Reserva no encontrada' });
+    }
+
+    if (client_contact && booking.client_contact !== client_contact) {
+      return res.status(403).json({ error: 'No autorizado' });
     }
 
     if (booking.status !== 'pending_payment') {
@@ -81,7 +86,7 @@ router.post('/:bookingId/upload', async (req, res) => {
   }
 });
 
-router.post('/:bookingId/confirm', async (req, res) => {
+router.post('/:bookingId/confirm', requireAdmin, async (req, res) => {
   try {
     const { bookingId } = req.params;
 
@@ -99,7 +104,7 @@ router.post('/:bookingId/confirm', async (req, res) => {
   }
 });
 
-router.post('/:bookingId/reject', async (req, res) => {
+router.post('/:bookingId/reject', requireAdmin, async (req, res) => {
   try {
     const { bookingId } = req.params;
 
