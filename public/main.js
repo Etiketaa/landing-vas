@@ -200,15 +200,23 @@ form?.addEventListener("submit", async (e) => {
 
     if (!res.ok) throw new Error(data.error || "Error");
 
+    const whatsappLink = data.whatsapp?.client || '#';
+    msg.innerHTML = `
+      <div style="text-align: center;">
+        <p style="margin-bottom: 12px;">Turno reservado exitosamente ✨</p>
+        <a href="${whatsappLink}" target="_blank" rel="noopener" 
+           style="display: inline-block; background: #25d366; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-bottom: 8px;">
+          <i class="ri-whatsapp-line"></i> Confirmar por WhatsApp
+        </a>
+        <p style="font-size: 12px; color: #666;">Hacé click para enviar los datos del turno</p>
+      </div>
+    `;
     msg.style.color = "#7f5539";
-    msg.textContent = "Turno reservado. Te confirmaremos pronto.";
 
     form.reset();
     priceDisplay.style.display = "none";
     timeSelect.innerHTML = '<option value="">Elegi fecha y servicio</option>';
     timeSelect.disabled = true;
-
-    setTimeout(closeModal, 2500);
   } catch (err) {
     msg.style.color = "#e63946";
     msg.textContent = err.message || "Error al enviar. Intenta nuevamente.";

@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const supabase = require('../lib/supabase');
-const resend = require('../lib/resend');
 const { calculatePrice } = require('../lib/pricing');
+
+const OWNER_WHATSAPP = '5492914140982';
 
 router.post('/', async (req, res) => {
   try {
@@ -43,9 +44,32 @@ router.post('/', async (req, res) => {
 
     if (insertError) throw insertError;
 
-    await sendConfirmationEmail(booking, priceInfo, name, contact);
-    await sendOwnerNotification(booking, priceInfo, name, contact);
-    await scheduleReminder(booking, priceInfo, name, contact);
+    const ownerMessage = `NUEVO TURNO RESERVADO 💅
+
+Cliente: ${name}
+Contacto: ${contact}
+Servicio: ${priceInfo.service_name}
+Fecha: ${date}
+Hora: ${time}
+Precio: $${priceInfo.final_price.toLocaleString('es-AR')}
+${notes ? `Notas: ${notes}` : ''}
+
+Para confirmar o cancelar, ingresá al panel de administración.`;
+
+    const clientMessage = `Hola VAS Centro de Estética ✨
+
+Quiero confirmar mi turno:
+
+Servicio: ${priceInfo.service_name}
+Fecha: ${date}
+Hora: ${time}
+Precio: $${priceInfo.final_price.toLocaleString('es-AR')}
+${notes ? `Notas: ${notes}` : ''}
+
+Mi nombre es ${name}`;
+
+    const ownerWhatsApp = `https://wa.me/${OWNER_WHATSAPP}?text=${encodeURIComponent(ownerMessage)}`;
+    const clientWhatsApp = `https://wa.me/${OWNER_WHATSAPP}?text=${encodeURIComponent(clientMessage)}`;
 
     res.status(201).json({
       message: 'Turno reservado exitosamente',
@@ -59,6 +83,10 @@ router.post('/', async (req, res) => {
           base: priceInfo.base_price,
           applied_rules: priceInfo.applied_rules
         }
+      },
+      whatsapp: {
+        owner: ownerWhatsApp,
+        client: clientWhatsApp
       }
     });
   } catch (err) {
