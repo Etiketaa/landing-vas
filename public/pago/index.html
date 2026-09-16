@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subir Comprobante - VAS Centro de Estetica</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Playfair+Display:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'DM Sans', sans-serif; background: linear-gradient(135deg, #2d2013 0%, #4a3020 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    
+    .container {
+      background: white;
+      border-radius: 20px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+    
+    .header {
+      background: #f9f5f0;
+      padding: 24px;
+      text-align: center;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .header h1 {
+      font-family: 'Playfair Display', serif;
+      color: #2d2013;
+      font-size: 22px;
+      margin-bottom: 4px;
+    }
+    
+    .header p { color: #8b7355; font-size: 14px; }
+    
+    .content { padding: 24px; }
+    
+    .booking-info {
+      background: #f9f5f0;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    
+    .booking-info h3 {
+      font-family: 'Playfair Display', serif;
+      color: #2d2013;
+      font-size: 16px;
+      margin-bottom: 12px;
+    }
+    
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      font-size: 14px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .info-row:last-child { border-bottom: none; }
+    .info-row .label { color: #8b7355; }
+    .info-row .value { color: #2d2013; font-weight: 500; }
+    
+    .deposit-highlight {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    
+    .deposit-highlight .amount {
+      font-size: 28px;
+      font-weight: 700;
+      color: #856404;
+    }
+    
+    .deposit-highlight .label { color: #856404; font-size: 14px; }
+    
+    .timer {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+      margin-bottom: 20px;
+      color: #721c24;
+      font-weight: 500;
+    }
+    
+    .timer.expired { background: #f5c6cb; }
+    
+    .upload-area {
+      border: 2px dashed #d4a574;
+      border-radius: 12px;
+      padding: 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-bottom: 16px;
+    }
+    
+    .upload-area:hover { border-color: #2d2013; background: #f9f5f0; }
+    .upload-area.has-image { border-color: #28a745; background: #f0fff4; }
+    
+    .upload-area svg { width: 48px; height: 48px; color: #d4a574; margin-bottom: 12px; }
+    .upload-area p { color: #8b7355; font-size: 14px; }
+    .upload-area .hint { font-size: 12px; color: #aaa; margin-top: 8px; }
+    
+    #preview { max-width: 100%; border-radius: 8px; margin-top: 12px; display: none; }
+    
+    .btn-submit {
+      width: 100%;
+      padding: 14px;
+      background: #2d2013;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    
+    .btn-submit:hover { background: #4a3020; }
+    .btn-submit:disabled { background: #ccc; cursor: not-allowed; }
+    
+    .success-msg {
+      text-align: center;
+      padding: 32px;
+      display: none;
+    }
+    
+    .success-msg svg { width: 64px; height: 64px; color: #28a745; margin-bottom: 16px; }
+    .success-msg h2 { font-family: 'Playfair Display', serif; color: #2d2013; margin-bottom: 8px; }
+    .success-msg p { color: #8b7355; }
+    
+    .error-msg {
+      color: #dc3545;
+      font-size: 13px;
+      text-align: center;
+      margin-top: 12px;
+      display: none;
+    }
+    
+    .expired-view { display: none; text-align: center; padding: 32px; }
+    .expired-view svg { width: 64px; height: 64px; color: #dc3545; margin-bottom: 16px; }
+    .expired-view h2 { font-family: 'Playfair Display', serif; color: #dc3545; margin-bottom: 8px; }
+    .expired-view p { color: #8b7355; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>VAS Centro de Estetica</h1>
+      <p>Subi tu comprobante de transferencia</p>
+    </div>
+    
+    <div class="content" id="mainContent">
+      <div class="booking-info" id="bookingInfo">
+        <h3>Detalles de tu turno</h3>
+        <div class="info-row"><span class="label">Profesional</span><span class="value" id="infoPro">-</span></div>
+        <div class="info-row"><span class="label">Servicio</span><span class="value" id="infoService">-</span></div>
+        <div class="info-row"><span class="label">Fecha</span><span class="value" id="infoDate">-</span></div>
+        <div class="info-row"><span class="label">Hora</span><span class="value" id="infoTime">-</span></div>
+        <div class="info-row"><span class="label">Precio total</span><span class="value" id="infoPrice">-</span></div>
+      </div>
+      
+      <div class="deposit-highlight">
+        <div class="label">SEÑA A PAGAR</div>
+        <div class="amount" id="depositAmount">$0</div>
+      </div>
+      
+      <div class="bank-info" style="background:#e8f5e9;border:1px solid #c8e6c9;border-radius:12px;padding:16px;margin-bottom:20px">
+        <h3 style="font-family:'Playfair Display',serif;color:#2d2013;font-size:14px;margin-bottom:12px">Datos para transferencia</h3>
+        <div class="info-row"><span class="label">CBU</span><span class="value" id="bankCbu">-</span></div>
+        <div class="info-row"><span class="label">Alias</span><span class="value" id="bankAlias">-</span></div>
+        <div class="info-row"><span class="label">Monto</span><span class="value" id="bankAmount" style="color:#28a745;font-size:18px">$0</span></div>
+      </div>
+      
+      <div class="timer" id="timer">Tiempo restante: <span id="timerCount">10:00</span></div>
+      
+      <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <p>Haz clic para subir tu comprobante</p>
+        <div class="hint">Formatos: JPG, PNG, PDF (max 5MB)</div>
+        <input type="file" id="fileInput" accept="image/*,.pdf" style="display:none" onchange="handleFile(this)">
+        <img id="preview" alt="Vista previa">
+      </div>
+      
+      <button class="btn-submit" id="btnSubmit" onclick="submitPayment()" disabled>Enviar comprobante</button>
+      <div class="error-msg" id="errorMsg"></div>
+    </div>
+    
+    <div class="success-msg" id="successView">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      <h2>Comprobante enviado</h2>
+      <p>Tu comprobante está siendo revisado. Te notificaremos cuando se confirme tu turno.</p>
+    </div>
+    
+    <div class="expired-view" id="expiredView">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+      <h2>Tiempo expirado</h2>
+      <p>El tiempo para subir el comprobante expiró. La reserva fue cancelada automaticamente.</p>
+    </div>
+  </div>
+
+  <script>
+    var API_BASE = window.location.origin;
+    var bookingId = new URLSearchParams(window.location.search).get('id');
+    var bookingData = null;
+    var selectedFile = null;
+    var timerInterval = null;
+
+    async function init() {
+      if (!bookingId) {
+        document.getElementById('errorMsg').textContent = 'ID de reserva no valido';
+        document.getElementById('errorMsg').style.display = 'block';
+        return;
+      }
+
+      try {
+        var res = await fetch(API_BASE + '/api/payment/' + bookingId);
+        bookingData = await res.json();
+        
+        if (bookingData.error) {
+          document.getElementById('errorMsg').textContent = bookingData.error;
+          document.getElementById('errorMsg').style.display = 'block';
+          return;
+        }
+
+        if (bookingData.status === 'confirmed') {
+          showSuccess();
+          return;
+        }
+
+        if (bookingData.status === 'cancelled') {
+          showExpired();
+          return;
+        }
+
+        document.getElementById('infoPro').textContent = bookingData.professional?.name || '-';
+        document.getElementById('infoService').textContent = bookingData.services?.name || '-';
+        document.getElementById('infoDate').textContent = bookingData.booking_date;
+        document.getElementById('infoTime').textContent = bookingData.booking_time;
+        document.getElementById('infoPrice').textContent = '$' + bookingData.final_price;
+        document.getElementById('depositAmount').textContent = '$' + bookingData.deposit_amount;
+        document.getElementById('bankCbu').textContent = bookingData.professional?.cbu || '-';
+        document.getElementById('bankAlias').textContent = bookingData.professional?.alias || '-';
+        document.getElementById('bankAmount').textContent = '$' + bookingData.deposit_amount;
+
+        startTimer();
+      } catch (e) {
+        document.getElementById('errorMsg').textContent = 'Error de conexion';
+        document.getElementById('errorMsg').style.display = 'block';
+      }
+    }
+
+    function startTimer() {
+      if (!bookingData.deposit_deadline) return;
+      
+      var deadline = new Date(bookingData.deposit_deadline);
+      
+      timerInterval = setInterval(function() {
+        var now = new Date();
+        var diff = deadline - now;
+        
+        if (diff <= 0) {
+          clearInterval(timerInterval);
+          showExpired();
+          return;
+        }
+        
+        var minutes = Math.floor(diff / 60000);
+        var seconds = Math.floor((diff % 60000) / 1000);
+        document.getElementById('timerCount').textContent = 
+          String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+      }, 1000);
+    }
+
+    function handleFile(input) {
+      var file = input.files[0];
+      if (!file) return;
+      
+      if (file.size > 5 * 1024 * 1024) {
+        document.getElementById('errorMsg').textContent = 'El archivo no puede superar 5MB';
+        document.getElementById('errorMsg').style.display = 'block';
+        return;
+      }
+      
+      selectedFile = file;
+      var preview = document.getElementById('preview');
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        preview.src = e.target.result;
+        preview.style.display = 'block';
+        document.getElementById('uploadArea').classList.add('has-image');
+        document.getElementById('btnSubmit').disabled = false;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function submitPayment() {
+      if (!selectedFile || !bookingId) return;
+      
+      var btn = document.getElementById('btnSubmit');
+      btn.disabled = true;
+      btn.textContent = 'Enviando...';
+      
+      try {
+        var reader = new FileReader();
+        reader.onload = async function(e) {
+          var base64 = e.target.result;
+          
+          var res = await fetch(API_BASE + '/api/payment/' + bookingId + '/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ payment_image: base64 })
+          });
+          
+          var data = await res.json();
+          
+          if (data.error) {
+            document.getElementById('errorMsg').textContent = data.error;
+            document.getElementById('errorMsg').style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = 'Enviar comprobante';
+            return;
+          }
+          
+          showSuccess();
+        };
+        reader.readAsDataURL(selectedFile);
+      } catch (e) {
+        document.getElementById('errorMsg').textContent = 'Error al enviar';
+        document.getElementById('errorMsg').style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Enviar comprobante';
+      }
+    }
+
+    function showSuccess() {
+      clearInterval(timerInterval);
+      document.getElementById('mainContent').style.display = 'none';
+      document.getElementById('successView').style.display = 'block';
+    }
+
+    function showExpired() {
+      clearInterval(timerInterval);
+      document.getElementById('mainContent').style.display = 'none';
+      document.getElementById('expiredView').style.display = 'block';
+    }
+
+    init();
+  </script>
+</body>
+</html>

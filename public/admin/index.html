@@ -115,9 +115,10 @@
       <a class="nav-item" data-page="services"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Servicios</a>
       <a class="nav-item" data-page="pricing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Precios</a>
       <a class="nav-item" data-page="calendar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Agenda</a>
-      <a class="nav-item" data-page="employees"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Empleados</a>
+      <a class="nav-item" data-page="employees"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Profesionales</a>
       <a class="nav-item" data-page="schedule"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Horarios</a>
       <a class="nav-item" data-page="cash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Caja</a>
+      <a class="nav-item" data-page="clients"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Clientes</a>
     </nav>
     <div class="sidebar-footer">
       <div class="user-info"><strong id="userName">Admin</strong><span id="userEmail"></span></div>
@@ -131,7 +132,7 @@
       <div class="stat-cards">
         <div class="stat-card"><div class="label">Reservas hoy</div><div class="value" id="statBookings">0</div></div>
         <div class="stat-card"><div class="label">Servicios activos</div><div class="value" id="statServices">0</div></div>
-        <div class="stat-card"><div class="label">Empleados</div><div class="value" id="statEmployees">0</div></div>
+        <div class="stat-card"><div class="label">Profesionales</div><div class="value" id="statEmployees">0</div></div>
         <div class="stat-card"><div class="label">Caja</div><div class="value" id="statCash">Cerrada</div></div>
       </div>
       <h3 style="font-family:'Playfair Display',serif;margin-bottom:16px;color:var(--brown-dark)">Reservas de hoy</h3>
@@ -150,11 +151,17 @@
 
     <div id="page-calendar" class="page" style="display:none">
       <div class="page-header"><h2>Agenda</h2><button class="btn-primary" onclick="openModal('booking')">+ Nueva reserva</button></div>
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap">
+        <label style="font-size:14px;color:var(--brown-medium);font-weight:500">Filtrar por profesional:</label>
+        <select id="filterEmployee" onchange="loadCalendar()" style="padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif">
+          <option value="">Todos</option>
+        </select>
+      </div>
       <div id="calendarView"></div>
     </div>
 
     <div id="page-employees" class="page" style="display:none">
-      <div class="page-header"><h2>Empleados</h2><button class="btn-primary" onclick="openModal('employee')">+ Nuevo empleado</button></div>
+      <div class="page-header"><h2>Profesionales</h2><button class="btn-primary" onclick="openModal('employee')">+ Nuevo profesional</button></div>
       <div class="data-table" id="employeesTable"></div>
     </div>
 
@@ -166,6 +173,11 @@
     <div id="page-cash" class="page" style="display:none">
       <div class="page-header"><h2>Caja</h2><div><button class="btn-primary" id="btnOpenCash" onclick="openCash()">Abrir caja</button><button class="btn-primary" id="btnCloseCash" onclick="openModal('closeCash')" style="display:none">Cerrar caja</button></div></div>
       <div id="cashContent"></div>
+    </div>
+
+    <div id="page-clients" class="page" style="display:none">
+      <div class="page-header"><h2>Clientes</h2><button class="btn-primary" onclick="openModal('client')">+ Nuevo cliente</button></div>
+      <div class="data-table" id="clientsTable"></div>
     </div>
   </main>
 
@@ -210,7 +222,7 @@
     }
 
     function loadPage(page) {
-      var fns = { dashboard: loadDashboard, services: loadServices, pricing: loadPricing, calendar: loadCalendar, employees: loadEmployees, schedule: loadSchedule, cash: loadCash };
+      var fns = { dashboard: loadDashboard, services: loadServices, pricing: loadPricing, calendar: loadCalendar, employees: loadEmployees, schedule: loadSchedule, cash: loadCash, clients: loadClients };
       if (fns[page]) fns[page]();
     }
 
@@ -276,16 +288,35 @@
     async function loadEmployees() {
       employeesData = await api('/api/admin/employees') || [];
       var el = document.getElementById('employeesTable');
-      if (!employeesData.length) { el.innerHTML = '<div class="empty-state"><p>No hay empleados</p></div>'; return; }
-      el.innerHTML = '<table><thead><tr><th>Nombre</th><th>Rol</th><th>Telefono</th><th>Activo</th><th>Acciones</th></tr></thead><tbody>' + employeesData.map(function(e) { return '<tr><td><strong>' + e.name + '</strong></td><td>' + (e.role || '-') + '</td><td>' + (e.phone || '-') + '</td><td>' + (e.active ? 'Si' : 'No') + '</td><td><button class="action-btn" onclick="editEmployee(\'' + e.id + '\')">Editar</button><button class="action-btn danger" onclick="deleteEmployee(\'' + e.id + '\')">Eliminar</button></td></tr>'; }).join('') + '</tbody></table>';
+      var filterEl = document.getElementById('filterEmployee');
+      var currentVal = filterEl.value;
+      
+      filterEl.innerHTML = '<option value="">Todos</option>' + employeesData.map(function(e) { return '<option value="' + e.id + '">' + e.name + '</option>'; }).join('');
+      filterEl.value = currentVal;
+      
+      if (!employeesData.length) { el.innerHTML = '<div class="empty-state"><p>No hay profesionales</p></div>'; return; }
+      el.innerHTML = '<table><thead><tr><th>Nombre</th><th>Servicios</th><th>Telefono</th><th>Activo</th><th>Acciones</th></tr></thead><tbody>' + employeesData.map(function(e) {
+        var svcNames = (e.employee_services || []).map(function(es) {
+          var svc = servicesData.find(function(s) { return s.id === es.service_id; });
+          return svc ? svc.name : '';
+        }).filter(Boolean).join(', ') || '-';
+        return '<tr><td><strong>' + e.name + '</strong></td><td>' + svcNames + '</td><td>' + (e.phone || '-') + '</td><td>' + (e.active ? 'Si' : 'No') + '</td><td><button class="action-btn" onclick="editEmployee(\'' + e.id + '\')">Editar</button><button class="action-btn danger" onclick="deleteEmployee(\'' + e.id + '\')">Eliminar</button></td></tr>';
+      }).join('') + '</tbody></table>';
     }
 
     function editEmployee(id) { openModal('employee', employeesData.find(function(x) { return x.id === id; })); }
-    async function deleteEmployee(id) { if (!confirm('Eliminar empleado?')) return; await api('/api/admin/employees/' + id, 'DELETE'); loadEmployees(); }
+    async function deleteEmployee(id) { if (!confirm('Eliminar profesional?')) return; await api('/api/admin/employees/' + id, 'DELETE'); loadEmployees(); }
 
     async function loadCalendar() {
+      var filterEmployee = document.getElementById('filterEmployee').value;
       var bookings = await api('/api/admin/bookings?date=' + selectedDate) || [];
       var allBookings = await api('/api/admin/bookings/all') || [];
+      
+      if (filterEmployee) {
+        bookings = bookings.filter(function(b) { return b.employee_id === filterEmployee; });
+        allBookings = allBookings.filter(function(b) { return b.employee_id === filterEmployee; });
+      }
+      
       var html = '<div style="display:flex;gap:16px;align-items:center;margin-bottom:24px;flex-wrap:wrap">';
       html += '<input type="date" id="calDate" value="' + selectedDate + '" onchange="selectedDate=this.value;loadCalendar()" style="padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;font-family:\'DM Sans\',sans-serif">';
       html += '<button class="btn-primary" onclick="openModal(\'booking\')">+ Nueva reserva</button>';
@@ -316,11 +347,38 @@
       html += '</div>';
       html += '<h3 style="font-family:\'Playfair Display\',serif;margin:24px 0 16px;color:var(--brown-dark)">Reservas del ' + selectedDate + '</h3>';
       if (!bookings.length) { html += '<div class="empty-state"><p>No hay reservas para esta fecha</p></div>'; }
-      else { html += '<div class="data-table"><table><thead><tr><th>Hora</th><th>Cliente</th><th>Servicio</th><th>Empleado</th><th>Precio</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>' + bookings.map(function(b) { return '<tr><td><strong>' + b.booking_time + '</strong></td><td>' + b.client_name + '</td><td>' + (b.services ? b.services.name : '-') + '</td><td>' + (b.employees ? b.employees.name : 'Sin asignar') + '</td><td>$' + b.final_price + '</td><td><span class="badge badge-' + b.status + '">' + b.status + '</span></td><td><button class="action-btn" onclick="updateBookingStatus(\'' + b.id + '\',\'completed\')">Completar</button><button class="action-btn danger" onclick="updateBookingStatus(\'' + b.id + '\',\'cancelled\')">Cancelar</button></td></tr>'; }).join('') + '</tbody></table></div>'; }
+      else { html += '<div class="data-table"><table><thead><tr><th>Hora</th><th>Cliente</th><th>Servicio</th><th>Profesional</th><th>Precio</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>' + bookings.map(function(b) {
+        var actions = '';
+        if (b.status === 'pending_confirmation') {
+          actions = '<button class="action-btn" onclick="viewPaymentProof(\'' + b.id + '\')">Ver comprobante</button><button class="action-btn" style="background:#28a745;color:white" onclick="confirmBooking(\'' + b.id + '\')">Confirmar</button><button class="action-btn danger" onclick="rejectBooking(\'' + b.id + '\')">Rechazar</button>';
+        } else if (b.status === 'pending_payment') {
+          actions = '<span style="font-size:12px;color:#856404">Esperando pago...</span>';
+        } else if (b.status !== 'cancelled') {
+          actions = '<button class="action-btn" onclick="updateBookingStatus(\'' + b.id + '\',\'completed\')">Completar</button><button class="action-btn danger" onclick="updateBookingStatus(\'' + b.id + '\',\'cancelled\')">Cancelar</button>';
+        } else {
+          actions = '-';
+        }
+        return '<tr><td><strong>' + b.booking_time + '</strong></td><td>' + b.client_name + '</td><td>' + (b.services ? b.services.name : '-') + '</td><td>' + (b.employees ? b.employees.name : 'Sin asignar') + '</td><td>$' + b.final_price + (b.deposit_amount ? '<br><small style="color:#856404">Seña: $' + b.deposit_amount + '</small>' : '') + '</td><td><span class="badge badge-' + b.status + '">' + b.status + '</span></td><td>' + actions + '</td></tr>';
+      }).join('') + '</tbody></table></div>'; }
       document.getElementById('calendarView').innerHTML = html;
     }
 
     async function updateBookingStatus(id, status) { await api('/api/admin/bookings/' + id + '/status', 'PUT', { status: status }); loadCalendar(); }
+
+    async function confirmBooking(id) { await api('/api/payment/' + id + '/confirm', 'POST'); loadCalendar(); }
+
+    async function rejectBooking(id) { if (!confirm('Rechazar comprobante y cancelar reserva?')) return; await api('/api/payment/' + id + '/reject', 'POST'); loadCalendar(); }
+
+    async function viewPaymentProof(id) {
+      var res = await fetch('/api/payment/' + id);
+      var booking = await res.json();
+      if (booking.payment_proof) {
+        var win = window.open('', '_blank');
+        win.document.write('<html><head><title>Comprobante - ' + booking.client_name + '</title><style>body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f5f5f5}img{max-width:90%;max-height:90vh;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.2)}</style></head><body><img src="' + booking.payment_proof + '" alt="Comprobante"></body></html>');
+      } else {
+        alert('Este cliente aun no subio comprobante');
+      }
+    }
 
     async function loadSchedule() {
       var hours = await api('/api/admin/schedule') || [];
@@ -360,28 +418,68 @@
     function openModal(type, data) {
       var el = document.getElementById('modalContent');
       var html = '';
-      if (type === 'service') { html = '<h3>' + (data ? 'Editar' : 'Nuevo') + ' servicio</h3><div class="form-group"><label>Nombre</label><input id="mName" value="' + (data ? data.name : '') + '"></div><div class="form-group"><label>Descripcion</label><input id="mDesc" value="' + (data ? data.description || '' : '') + '"></div><div class="form-group"><label>Precio base ($)</label><input type="number" id="mPrice" value="' + (data ? data.base_price : '') + '"></div><div class="form-group"><label>Duracion (min)</label><input type="number" id="mDuration" value="' + (data ? data.duration_minutes : '') + '"></div><div class="form-group"><label>Categoria</label><input id="mCategory" value="' + (data ? data.category || '' : '') + '"></div><div class="modal-actions"><button class="btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="saveService(\'' + (data ? data.id : '') + '\')">Guardar</button></div>'; }
+      if (type === 'service') { html = '<h3>' + (data ? 'Editar' : 'Nuevo') + ' servicio</h3><div class="form-group"><label>Nombre</label><input id="mName" value="' + (data ? data.name : '') + '"></div><div class="form-group"><label>Descripcion</label><input id="mDesc" value="' + (data ? data.description || '' : '') + '"></div><div class="form-group"><label>Precio base ($)</label><input type="number" id="mPrice" value="' + (data ? data.base_price : '') + '"></div><div class="form-group"><label>Duracion (min)</label><input type="number" id="mDuration" value="' + (data ? data.duration_minutes : '') + '"></div><div class="form-group"><label>Seña requerida (%)</label><input type="number" id="mDeposit" min="0" max="100" value="' + (data ? data.deposit_percent || 0 : 0) + '"></div><div class="form-group"><label>Comisión del centro (%)</label><input type="number" id="mCommission" min="0" max="100" value="' + (data ? data.commission_percent || 0 : 0) + '"></div><div class="form-group"><label>Categoria</label><input id="mCategory" value="' + (data ? data.category || '' : '') + '"></div><div class="modal-actions"><button class="btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="saveService(\'' + (data ? data.id : '') + '\')">Guardar</button></div>'; }
       else if (type === 'pricing') { html = '<h3>' + (data ? 'Editar' : 'Nueva') + ' regla</h3><div class="form-group"><label>Nombre</label><input id="mName" value="' + (data ? data.name : '') + '"></div><div class="form-group"><label>Tipo</label><select id="mType"><option value="multiplier"' + (data && data.rule_type === 'multiplier' ? ' selected' : '') + '>Multiplicador</option><option value="fixed_discount"' + (data && data.rule_type === 'fixed_discount' ? ' selected' : '') + '>Descuento fijo</option></select></div><div class="form-group"><label>Valor</label><input type="number" step="0.01" id="mValue" value="' + (data ? data.value : '') + '"></div><div class="form-group"><label>Prioridad</label><input type="number" id="mPriority" value="' + (data ? data.priority : 0) + '"></div><div class="modal-actions"><button class="btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="savePricing(\'' + (data ? data.id : '') + '\')">Guardar</button></div>'; }
-      else if (type === 'employee') { html = '<h3>' + (data ? 'Editar' : 'Nuevo') + ' empleado</h3><div class="form-group"><label>Nombre</label><input id="mName" value="' + (data ? data.name : '') + '"></div><div class="form-group"><label>Rol</label><input id="mRole" value="' + (data ? data.role || '' : '') + '"></div><div class="form-group"><label>Telefono</label><input id="mPhone" value="' + (data ? data.phone || '' : '') + '"></div><div class="modal-actions"><button class="btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="saveEmployee(\'' + (data ? data.id : '') + '\')">Guardar</button></div>'; }
-      else if (type === 'booking') { var sOpts = servicesData.map(function(s) { return '<option value="' + s.id + '">' + s.name + ' - $' + s.base_price + '</option>'; }).join(''); var eOpts = employeesData.map(function(e) { return '<option value="' + e.id + '">' + e.name + '</option>'; }).join(''); html = '<h3>Nueva reserva</h3><div class="form-group"><label>Nombre cliente</label><input id="mClientName"></div><div class="form-group"><label>Contacto</label><input id="mClientContact"></div><div class="form-group"><label>Servicio</label><select id="mServiceId">' + sOpts + '</select></div><div class="form-group"><label>Empleado</label><select id="mEmployeeId"><option value="">Sin asignar</option>' + eOpts + '</select></div><div class="form-group"><label>Fecha</label><input type="date" id="mDate" value="' + selectedDate + '"></div><div class="form-group"><label>Hora</label><input type="time" id="mTime"></div><div class="modal-actions"><button class="btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="saveBooking()">Guardar</button></div>'; }
+      else if (type === 'employee') {
+        var assignedServices = data && data.employee_services ? data.employee_services.map(function(es) { return es.service_id; }) : [];
+        var serviceCheckboxes = servicesData.map(function(s) {
+          var checked = assignedServices.includes(s.id) ? ' checked' : '';
+          return '<label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer"><input type="checkbox" class="mServiceCheck" value="' + s.id + '"' + checked + '> ' + s.name + ' - $' + s.base_price + '</label>';
+        }).join('');
+        html = '<h3>' + (data ? 'Editar' : 'Nuevo') + ' profesional</h3><div class="form-group"><label>Nombre</label><input id="mName" value="' + (data ? data.name : '') + '"></div><div class="form-group"><label>Email (para login)</label><input type="email" id="mEmail" value="' + (data ? data.email || '' : '') + '" placeholder="ejemplo@email.com"></div><div class="form-group"><label>Contraseña' + (data ? ' (dejar vacio para no cambiar)' : '') + '</label><input type="password" id="mPassword" placeholder="' + (data ? '••••••' : 'Minimo 6 caracteres') + '"></div><div class="form-group"><label>Telefono</label><input id="mPhone" value="' + (data ? data.phone || '' : '') + '"></div><div class="form-group"><label>Datos bancarios (para cobrar seña)</label></div><div class="form-group"><label>CBU</label><input id="mCbu" value="' + (data ? data.cbu || '' : '') + '" placeholder="Ej: 0000000000000000000000"></div><div class="form-group"><label>Alias</label><input id="mAlias" value="' + (data ? data.alias || '' : '') + '" placeholder="Ej: MI.ALIAS.BANCO"></div><div class="form-group"><label>Servicios que ofrece</label><div style="max-height:200px;overflow-y:auto;padding:8px;border:1px solid #ddd;border-radius:8px">' + serviceCheckboxes + '</div></div><div class="modal-actions"><button class="btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="saveEmployee(\'' + (data ? data.id : '') + '\')">Guardar</button></div>';
+      }
+      else if (type === 'booking') { var sOpts = servicesData.map(function(s) { return '<option value="' + s.id + '">' + s.name + ' - $' + s.base_price + '</option>'; }).join(''); html = '<h3>Nueva reserva</h3><div class="form-group"><label>Nombre cliente</label><input id="mClientName"></div><div class="form-group"><label>Contacto</label><input id="mClientContact"></div><div class="form-group"><label>Servicio</label><select id="mServiceId">' + sOpts + '</select></div><div class="form-group"><label>Fecha</label><input type="date" id="mDate" value="' + selectedDate + '"></div><div class="form-group"><label>Hora</label><input type="time" id="mTime"></div><div class="modal-actions"><button class="btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="saveBooking()">Guardar</button></div>'; }
       else if (type === 'closeCash') { html = '<h3>Cerrar caja</h3><div class="form-group"><label>Monto contado ($)</label><input type="number" step="0.01" id="mCounted"></div><div class="modal-actions"><button class="btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="closeCashSession()">Cerrar caja</button></div>'; }
+      else if (type === 'client') { html = '<h3>' + (data ? 'Editar' : 'Nuevo') + ' cliente</h3><div class="form-group"><label>Nombre</label><input id="mName" value="' + (data ? data.name : '') + '"></div><div class="form-group"><label>Email</label><input type="email" id="mEmail" value="' + (data ? data.email || '' : '') + '"></div><div class="form-group"><label>Telefono</label><input id="mPhone" value="' + (data ? data.phone || '' : '') + '"></div><div class="form-group"><label>Notas</label><input id="mNotes" value="' + (data ? data.notes || '' : '') + '"></div><div class="modal-actions"><button class="btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="saveClient(\'' + (data ? data.id : '') + '\')">Guardar</button></div>'; }
       el.innerHTML = html;
       document.getElementById('modalOverlay').classList.add('show');
     }
 
     function closeModal() { document.getElementById('modalOverlay').classList.remove('show'); }
 
-    async function saveService(id) { var body = { name: document.getElementById('mName').value, description: document.getElementById('mDesc').value, base_price: parseFloat(document.getElementById('mPrice').value), duration_minutes: parseInt(document.getElementById('mDuration').value), category: document.getElementById('mCategory').value, active: true }; if (id) await api('/api/admin/services/' + id, 'PUT', body); else await api('/api/admin/services', 'POST', body); closeModal(); loadServices(); }
+    async function saveService(id) { var body = { name: document.getElementById('mName').value, description: document.getElementById('mDesc').value, base_price: parseFloat(document.getElementById('mPrice').value), duration_minutes: parseInt(document.getElementById('mDuration').value), deposit_percent: parseFloat(document.getElementById('mDeposit').value) || 0, commission_percent: parseFloat(document.getElementById('mCommission').value) || 0, category: document.getElementById('mCategory').value, active: true }; if (id) await api('/api/admin/services/' + id, 'PUT', body); else await api('/api/admin/services', 'POST', body); closeModal(); loadServices(); }
 
     async function savePricing(id) { var body = { name: document.getElementById('mName').value, rule_type: document.getElementById('mType').value, value: parseFloat(document.getElementById('mValue').value), priority: parseInt(document.getElementById('mPriority').value), conditions: {}, active: true }; if (id) await api('/api/admin/pricing-rules/' + id, 'PUT', body); else await api('/api/admin/pricing-rules', 'POST', body); closeModal(); loadPricing(); }
 
-    async function saveEmployee(id) { var body = { name: document.getElementById('mName').value, role: document.getElementById('mRole').value, phone: document.getElementById('mPhone').value, active: true }; if (id) await api('/api/admin/employees/' + id, 'PUT', body); else await api('/api/admin/employees', 'POST', body); closeModal(); loadEmployees(); }
+    async function saveEmployee(id) {
+      var serviceIds = Array.from(document.querySelectorAll('.mServiceCheck:checked')).map(function(cb) { return cb.value; });
+      var body = {
+        name: document.getElementById('mName').value,
+        email: document.getElementById('mEmail').value.toLowerCase(),
+        phone: document.getElementById('mPhone').value,
+        cbu: document.getElementById('mCbu').value,
+        alias: document.getElementById('mAlias').value,
+        active: true,
+        service_ids: serviceIds
+      };
+      var password = document.getElementById('mPassword').value;
+      if (password) body.password = password;
+      if (id) await api('/api/admin/employees/' + id, 'PUT', body);
+      else await api('/api/admin/employees', 'POST', body);
+      closeModal();
+      loadEmployees();
+    }
 
-    async function saveBooking() { var body = { client_name: document.getElementById('mClientName').value, client_contact: document.getElementById('mClientContact').value, service_id: document.getElementById('mServiceId').value, employee_id: document.getElementById('mEmployeeId').value || null, booking_date: document.getElementById('mDate').value, booking_time: document.getElementById('mTime').value }; var res = await api('/api/admin/bookings', 'POST', body); if (res && res.error) { alert(res.error); return; } closeModal(); loadCalendar(); }
+    async function saveBooking() { var body = { client_name: document.getElementById('mClientName').value, client_contact: document.getElementById('mClientContact').value, service_id: document.getElementById('mServiceId').value, booking_date: document.getElementById('mDate').value, booking_time: document.getElementById('mTime').value }; var res = await api('/api/admin/bookings', 'POST', body); if (res && res.error) { alert(res.error); return; } closeModal(); loadCalendar(); }
 
     async function closeCashSession() { var body = { session_id: (await api('/api/admin/cash/open')).id, counted_close: parseFloat(document.getElementById('mCounted').value) }; await api('/api/admin/cash/close', 'POST', body); closeModal(); loadCash(); }
 
-    loadDashboard();
+    async function loadClients() {
+      var clients = await api('/api/admin/clients') || [];
+      var el = document.getElementById('clientsTable');
+      if (!clients.length) { el.innerHTML = '<div class="empty-state"><p>No hay clientes registrados</p></div>'; return; }
+      el.innerHTML = '<table><thead><tr><th>Nombre</th><th>Email</th><th>Telefono</th><th>Notas</th><th>Acciones</th></tr></thead><tbody>' + clients.map(function(c) { return '<tr><td><strong>' + c.name + '</strong></td><td>' + (c.email || '-') + '</td><td>' + (c.phone || '-') + '</td><td>' + (c.notes || '-') + '</td><td><button class="action-btn" onclick="editClient(\'' + c.id + '\', ' + JSON.stringify(c).replace(/"/g, '&quot;') + ')">Editar</button><button class="action-btn danger" onclick="deleteClient(\'' + c.id + '\')">Eliminar</button></td></tr>'; }).join('') + '</tbody></table>';
+    }
+
+    function editClient(id, data) { openModal('client', data); }
+    async function deleteClient(id) { if (!confirm('Eliminar cliente?')) return; await api('/api/admin/clients/' + id, 'DELETE'); loadClients(); }
+    async function saveClient(id) { var body = { name: document.getElementById('mName').value, email: document.getElementById('mEmail').value, phone: document.getElementById('mPhone').value, notes: document.getElementById('mNotes').value }; if (id) await api('/api/admin/clients/' + id, 'PUT', body); else await api('/api/admin/clients', 'POST', body); closeModal(); loadClients(); }
+
+    async function init() {
+      await loadServices();
+      loadDashboard();
+    }
+    init();
   </script>
 </body>
 </html>

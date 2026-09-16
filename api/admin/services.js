@@ -22,7 +22,7 @@ router.get('/services', async (req, res) => {
 
 router.post('/services', async (req, res) => {
   try {
-    const { name, description, base_price, duration_minutes, category, active } = req.body;
+    const { name, description, base_price, duration_minutes, deposit_percent, commission_percent, category, active } = req.body;
 
     if (!name || !base_price || !duration_minutes) {
       return res.status(400).json({ error: 'Nombre, precio y duracion requeridos' });
@@ -30,7 +30,7 @@ router.post('/services', async (req, res) => {
 
     const { data, error } = await supabase
       .from('services')
-      .insert({ name, description, base_price, duration_minutes, category, active })
+      .insert({ name, description, base_price, duration_minutes, deposit_percent: deposit_percent || 0, commission_percent: commission_percent || 0, category, active })
       .select()
       .single();
 
@@ -44,11 +44,11 @@ router.post('/services', async (req, res) => {
 router.put('/services/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, base_price, duration_minutes, category, active } = req.body;
+    const { name, description, base_price, duration_minutes, deposit_percent, commission_percent, category, active } = req.body;
 
     const { data, error } = await supabase
       .from('services')
-      .update({ name, description, base_price, duration_minutes, category, active })
+      .update({ name, description, base_price, duration_minutes, deposit_percent: deposit_percent || 0, commission_percent: commission_percent || 0, category, active })
       .eq('id', id)
       .select()
       .single();
@@ -63,6 +63,8 @@ router.put('/services/:id', async (req, res) => {
 router.delete('/services/:id', async (req, res) => {
   try {
     const { id } = req.params;
+
+    await supabase.from('employee_services').delete().eq('service_id', id);
 
     const { error } = await supabase
       .from('services')
@@ -164,15 +166,26 @@ router.get('/employees', async (req, res) => {
 
 router.post('/employees', async (req, res) => {
   try {
-    const { name, role, phone, active, service_ids } = req.body;
+    const { name, email, password, phone, cbu, alias, active, service_ids } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Nombre requerido' });
     }
 
+    if (email && !password) {
+      return res.status(400).json({ error: 'Si proporciona email, la contraseña es requerida' });
+    }
+
+    const crypto = require('crypto');
+    const employeeData = { name, email: email || null, phone, cbu: cbu || null, alias: alias || null, active };
+    
+    if (password) {
+      employeeData.password_hash = crypto.createHash('sha256').update(password).digest('hex');
+    }
+
     const { data: employee, error } = await supabase
       .from('employees')
-      .insert({ name, role, phone, active })
+      .insert(employeeData)
       .select()
       .single();
 
@@ -196,11 +209,18 @@ router.post('/employees', async (req, res) => {
 router.put('/employees/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, role, phone, active, service_ids } = req.body;
+    const { name, email, password, phone, cbu, alias, active, service_ids } = req.body;
+
+    const crypto = require('crypto');
+    const updateData = { name, email: email || null, phone, cbu: cbu || null, alias: alias || null, active };
+    
+    if (password) {
+      updateData.password_hash = crypto.createHash('sha256').update(password).digest('hex');
+    }
 
     const { data: employee, error } = await supabase
       .from('employees')
-      .update({ name, role, phone, active })
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();

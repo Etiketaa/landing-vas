@@ -19,6 +19,10 @@ const authRouter = require('./api/auth');
 const adminServicesRouter = require('./api/admin/services');
 const adminScheduleRouter = require('./api/admin/schedule');
 const adminCashRouter = require('./api/admin/cash');
+const adminClientsRouter = require('./api/admin/clients');
+const employeeAuthRouter = require('./api/employee/auth');
+const employeeBookingsRouter = require('./api/employee/bookings');
+const paymentRouter = require('./api/payment');
 
 app.use('/api/services', servicesRouter);
 app.use('/api/available-slots', availableSlotsRouter);
@@ -29,6 +33,10 @@ app.use('/api/auth', authRouter);
 app.use('/api/admin', adminServicesRouter);
 app.use('/api/admin', adminScheduleRouter);
 app.use('/api/admin', adminCashRouter);
+app.use('/api/admin', adminClientsRouter);
+app.use('/api/employee/auth', employeeAuthRouter);
+app.use('/api/employee', employeeBookingsRouter);
+app.use('/api/payment', paymentRouter);
 
 app.get('/{*splat}', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

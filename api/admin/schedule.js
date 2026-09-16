@@ -133,6 +133,16 @@ router.post('/bookings', async (req, res) => {
       return res.status(400).json({ error: 'Campos requeridos faltantes' });
     }
 
+    let assignedEmployeeId = employee_id;
+    if (!assignedEmployeeId) {
+      const { data: assignedPro } = await supabase
+        .from('employee_services')
+        .select('employee_id')
+        .eq('service_id', service_id)
+        .single();
+      assignedEmployeeId = assignedPro?.employee_id || null;
+    }
+
     const { data: existingBooking } = await supabase
       .from('bookings')
       .select('id')
@@ -157,7 +167,7 @@ router.post('/bookings', async (req, res) => {
         client_name,
         client_contact,
         service_id,
-        employee_id,
+        employee_id: assignedEmployeeId,
         booking_date,
         booking_time,
         final_price: service?.base_price || 0,

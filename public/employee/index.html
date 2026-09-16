@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Agenda - VAS Centro de Estetica</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'DM Sans', sans-serif; background: #f9f5f0; min-height: 100vh; }
+    
+    .login-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #2d2013 0%, #4a3020 100%);
+    }
+    
+    .login-card {
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    
+    .login-card h1 {
+      font-family: 'Playfair Display', serif;
+      color: #2d2013;
+      font-size: 24px;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    
+    .login-card p {
+      text-align: center;
+      color: #8b7355;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+    
+    .form-group {
+      margin-bottom: 16px;
+    }
+    
+    .form-group label {
+      display: block;
+      color: #4a3020;
+      font-weight: 500;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+    
+    .form-group input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: 'DM Sans', sans-serif;
+    }
+    
+    .form-group input:focus {
+      outline: none;
+      border-color: #d4a574;
+    }
+    
+    .btn-login {
+      width: 100%;
+      padding: 14px;
+      background: #2d2013;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    
+    .btn-login:hover { background: #4a3020; }
+    .btn-login:disabled { background: #ccc; cursor: not-allowed; }
+    
+    .error-msg {
+      color: #e74c3c;
+      font-size: 13px;
+      text-align: center;
+      margin-top: 12px;
+      display: none;
+    }
+    
+    .panel { display: none; }
+    .panel.active { display: block; }
+    
+    .header {
+      background: white;
+      padding: 16px 24px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .header h2 {
+      font-family: 'Playfair Display', serif;
+      color: #2d2013;
+      font-size: 20px;
+    }
+    
+    .header-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    
+    .user-badge {
+      background: #f0e6d6;
+      color: #4a3020;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    
+    .btn-logout {
+      background: none;
+      border: 1px solid #ddd;
+      color: #666;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    
+    .btn-logout:hover { background: #f5f5f5; }
+    
+    .content { padding: 24px; max-width: 800px; margin: 0 auto; }
+    
+    .date-nav {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    
+    .date-nav input {
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: 'DM Sans', sans-serif;
+    }
+    
+    .date-nav button {
+      padding: 10px 16px;
+      background: #2d2013;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    
+    .booking-card {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      border-left: 4px solid #d4a574;
+    }
+    
+    .booking-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    
+    .booking-time {
+      font-size: 18px;
+      font-weight: 600;
+      color: #2d2013;
+    }
+    
+    .booking-status {
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    .booking-status.pending { background: #fff3cd; color: #856404; }
+    .booking-status.confirmed { background: #d4edda; color: #155724; }
+    .booking-status.completed { background: #cce5ff; color: #004085; }
+    
+    .booking-client {
+      font-size: 16px;
+      color: #4a3020;
+      margin-bottom: 4px;
+    }
+    
+    .booking-service {
+      font-size: 13px;
+      color: #8b7355;
+    }
+    
+    .booking-actions {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+    }
+    
+    .btn-action {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    
+    .btn-complete { background: #28a745; color: white; }
+    .btn-cancel { background: #dc3545; color: white; }
+    
+    .empty-state {
+      text-align: center;
+      padding: 48px;
+      color: #8b7355;
+    }
+    
+    .empty-state h3 {
+      font-family: 'Playfair Display', serif;
+      color: #4a3020;
+      margin-bottom: 8px;
+    }
+    
+    .stats-bar {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    
+    .stat-item {
+      background: white;
+      padding: 16px 24px;
+      border-radius: 12px;
+      flex: 1;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    
+    .stat-item .value {
+      font-size: 28px;
+      font-weight: 700;
+      color: #2d2013;
+    }
+    
+    .stat-item .label {
+      font-size: 12px;
+      color: #8b7355;
+      margin-top: 4px;
+    }
+    
+    .password-wrapper {
+      position: relative;
+    }
+    
+    .password-wrapper input {
+      padding-right: 40px;
+    }
+    
+    .toggle-password {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #8b7355;
+      font-size: 16px;
+    }
+    
+    @media (max-width: 600px) {
+      .stats-bar { flex-direction: column; }
+      .header { flex-direction: column; gap: 12px; }
+      .header-actions { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container" id="loginView">
+    <div class="login-card">
+      <h1>Mi Agenda</h1>
+      <p>Accedi a tu calendario de reservas</p>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="loginEmail" placeholder="tu@email.com">
+      </div>
+      <div class="form-group">
+        <label>Contrasena</label>
+        <div class="password-wrapper">
+          <input type="password" id="loginPassword" placeholder="Tu contrasena">
+          <button class="toggle-password" onclick="togglePassword()">👁</button>
+        </div>
+      </div>
+      <button class="btn-login" id="btnLogin" onclick="doLogin()">Ingresar</button>
+      <div class="error-msg" id="loginError"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="mainPanel">
+    <div class="header">
+      <h2>Mi Agenda</h2>
+      <div class="header-actions">
+        <span class="user-badge" id="employeeName"></span>
+        <button class="btn-logout" onclick="doLogout()">Cerrar sesion</button>
+      </div>
+    </div>
+    <div class="content">
+      <div class="stats-bar">
+        <div class="stat-item"><div class="value" id="statToday">0</div><div class="label">Reservas hoy</div></div>
+        <div class="stat-item"><div class="value" id="statPending">0</div><div class="label">Pendientes</div></div>
+        <div class="stat-item"><div class="value" id="statCompleted">0</div><div class="label">Completadas</div></div>
+      </div>
+      <div class="date-nav">
+        <input type="date" id="selectedDate" onchange="loadBookings()">
+        <button onclick="changeDate(-1)">← Anterior</button>
+        <button onclick="changeDate(1)">Siguiente →</button>
+        <button onclick="goToday()" style="background:#d4a574">Hoy</button>
+      </div>
+      <div id="bookingsList"></div>
+    </div>
+  </div>
+
+  <script>
+    var API_BASE = window.location.origin;
+    var token = localStorage.getItem('employee_token');
+    var employee = null;
+
+    function togglePassword() {
+      var input = document.getElementById('loginPassword');
+      input.type = input.type === 'password' ? 'text' : 'password';
+    }
+
+    async function api(url, method, body) {
+      var opts = { method, headers: { 'Content-Type': 'application/json' } };
+      if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+      if (body) opts.body = JSON.stringify(body);
+      var res = await fetch(API_BASE + url, opts);
+      return await res.json();
+    }
+
+    async function doLogin() {
+      var email = document.getElementById('loginEmail').value;
+      var password = document.getElementById('loginPassword').value;
+      var errorEl = document.getElementById('loginError');
+      var btn = document.getElementById('btnLogin');
+
+      if (!email || !password) {
+        errorEl.textContent = 'Completa ambos campos';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Ingresando...';
+      errorEl.style.display = 'none';
+
+      try {
+        var res = await api('/api/employee/auth/login', 'POST', { email, password });
+        if (res.error) {
+          errorEl.textContent = res.error;
+          errorEl.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Ingresar';
+          return;
+        }
+        token = res.token;
+        employee = res.employee;
+        localStorage.setItem('employee_token', token);
+        localStorage.setItem('employee_data', JSON.stringify(employee));
+        showPanel();
+      } catch (e) {
+        errorEl.textContent = 'Error de conexion';
+        errorEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Ingresar';
+      }
+    }
+
+    function doLogout() {
+      api('/api/employee/auth/logout', 'POST');
+      token = null;
+      employee = null;
+      localStorage.removeItem('employee_token');
+      localStorage.removeItem('employee_data');
+      document.getElementById('loginView').style.display = 'flex';
+      document.getElementById('mainPanel').classList.remove('active');
+    }
+
+    function showPanel() {
+      document.getElementById('loginView').style.display = 'none';
+      document.getElementById('mainPanel').classList.add('active');
+      document.getElementById('employeeName').textContent = employee.name;
+      if (employee.services && employee.services.length) {
+        document.getElementById('employeeName').textContent += ' - ' + employee.services.join(', ');
+      }
+      var today = new Date().toISOString().split('T')[0];
+      document.getElementById('selectedDate').value = today;
+      loadBookings();
+    }
+
+    function changeDate(delta) {
+      var input = document.getElementById('selectedDate');
+      var d = new Date(input.value);
+      d.setDate(d.getDate() + delta);
+      input.value = d.toISOString().split('T')[0];
+      loadBookings();
+    }
+
+    function goToday() {
+      document.getElementById('selectedDate').value = new Date().toISOString().split('T')[0];
+      loadBookings();
+    }
+
+    async function loadBookings() {
+      var date = document.getElementById('selectedDate').value;
+      var bookings = await api('/api/employee/bookings?date=' + date) || [];
+      var allBookings = await api('/api/employee/bookings/all') || [];
+
+      var todayBookings = allBookings.filter(function(b) { return b.booking_date === date; });
+      var pending = todayBookings.filter(function(b) { return b.status === 'pending' || b.status === 'confirmed'; }).length;
+      var completed = todayBookings.filter(function(b) { return b.status === 'completed'; }).length;
+
+      document.getElementById('statToday').textContent = todayBookings.length;
+      document.getElementById('statPending').textContent = pending;
+      document.getElementById('statCompleted').textContent = completed;
+
+      var el = document.getElementById('bookingsList');
+      if (!bookings.length) {
+        el.innerHTML = '<div class="empty-state"><h3>Sin reservas</h3><p>No tienes reservas para esta fecha</p></div>';
+        return;
+      }
+
+      el.innerHTML = bookings.map(function(b) {
+        return '<div class="booking-card">' +
+          '<div class="booking-header">' +
+            '<span class="booking-time">' + b.booking_time + '</span>' +
+            '<span class="booking-status ' + b.status + '">' + b.status + '</span>' +
+          '</div>' +
+          '<div class="booking-client">' + b.client_name + '</div>' +
+          '<div class="booking-service">' + (b.services ? b.services.name + ' - ' + b.services.duration_minutes + ' min' : '-') + '</div>' +
+          '<div class="booking-actions">' +
+            (b.status !== 'completed' ? '<button class="btn-action btn-complete" onclick="updateStatus(\'' + b.id + '\', \'completed\')">Completar</button>' : '') +
+            (b.status !== 'cancelled' && b.status !== 'completed' ? '<button class="btn-action btn-cancel" onclick="updateStatus(\'' + b.id + '\', \'cancelled\')">Cancelar</button>' : '') +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    async function updateStatus(id, status) {
+      if (status === 'cancelled' && !confirm('Cancelar esta reserva?')) return;
+      await api('/api/employee/bookings/' + id + '/status', 'PUT', { status: status });
+      loadBookings();
+    }
+
+    if (token) {
+      employee = JSON.parse(localStorage.getItem('employee_data'));
+      if (employee) showPanel();
+    }
+  </script>
+</body>
+</html>
