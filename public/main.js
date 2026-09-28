@@ -131,39 +131,58 @@ async function loadAvailableSlots() {
     const availableSlots = data.slots.filter((s) => s.available);
 
     if (availableSlots.length === 0) {
-      timeSelect.innerHTML = '<option value="">No hay horarios disponibles</option>';
-    } else {
-      availableSlots.forEach((slot) => {
-        const opt = document.createElement("option");
-        opt.value = slot.time;
-        opt.textContent = slot.time;
-        timeSelect.appendChild(opt);
-      });
+      const motivo = data.schedule?.closed
+        ? data.schedule.reason || "El centro está cerrado ese día"
+        : "No hay horarios disponibles";
+      timeSelect.innerHTML = `<option value="">${motivo}</option>`;
+      timeSelect.disabled = true;
+      priceDisplay.style.display = "none";
+      return;
     }
+
+    availableSlots.forEach((slot) => {
+      const opt = document.createElement("option");
+      opt.value = slot.time;
+      opt.textContent = slot.time;
+      timeSelect.appendChild(opt);
+    });
     timeSelect.disabled = false;
 
-    priceFinal.textContent = `$${data.final_price.toLocaleString("es-AR")}`;
-
-    if (data.final_price !== data.base_price) {
-      priceBase.textContent = `Precio base: $${data.base_price.toLocaleString("es-AR")}`;
-      priceBase.style.display = "inline";
-    } else {
-      priceBase.style.display = "none";
-    }
-
-    if (data.price_breakdown.applied_rules.length > 0) {
-      priceRules.textContent = data.price_breakdown.applied_rules.map((r) => r.name).join(", ");
-      priceRules.style.display = "inline";
-    } else {
-      priceRules.style.display = "none";
-    }
-
+    renderPriceForTime(data, timeSelect.value);
     priceDisplay.style.display = "block";
   } catch (err) {
     console.error("Error loading slots:", err);
     timeSelect.innerHTML = '<option value="">Error al cargar horarios</option>';
   }
 }
+
+// Cada horario puede tener su propio precio (reglas por franja horaria).
+// Antes se mostraba siempre el cálculo hecho a las 10:00.
+function renderPriceForTime(data, time) {
+  const slot = data.slots.find((s) => s.time === time);
+  const finalPrice = slot ? slot.final_price : data.final_price;
+  const rules = slot ? slot.applied_rules : data.price_breakdown.applied_rules.map((r) => r.name);
+
+  priceFinal.textContent = `$${finalPrice.toLocaleString("es-AR")}`;
+
+  if (finalPrice !== data.base_price) {
+    priceBase.textContent = `Precio base: $${data.base_price.toLocaleString("es-AR")}`;
+    priceBase.style.display = "inline";
+  } else {
+    priceBase.style.display = "none";
+  }
+
+  if (rules && rules.length > 0) {
+    priceRules.textContent = rules.join(", ");
+    priceRules.style.display = "inline";
+  } else {
+    priceRules.style.display = "none";
+  }
+}
+
+timeSelect?.addEventListener("change", () => {
+  if (currentPriceData) renderPriceForTime(currentPriceData, timeSelect.value);
+});
 
 serviceSelect?.addEventListener("change", loadAvailableSlots);
 dateInput?.addEventListener("change", loadAvailableSlots);
