@@ -120,6 +120,7 @@
       <a class="nav-item" data-page="cash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Caja</a>
       <a class="nav-item" data-page="clients"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Clientes</a>
       <a class="nav-item" data-page="giftcards"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M16 8V6a4 4 0 0 0-8 0v2"/><line x1="12" y1="12" x2="12" y2="16"/></svg>Gift Cards</a>
+      <a class="nav-item" data-page="release"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 6.2H21l-5.3 3.9 2 6.4-5.7-3.9L6.3 18.5l2-6.4L3 8.2h6.6z"/></svg>Release</a>
     </nav>
     <div class="sidebar-footer">
       <div class="user-info"><strong id="userName">Admin</strong><span id="userEmail"></span></div>
@@ -190,6 +191,24 @@
       </div>
       <div class="data-table" id="giftcardsTable"></div>
     </div>
+
+    <div id="page-release" class="page" style="display:none">
+      <div class="page-header"><h2>Release</h2></div>
+      <p style="color:var(--brown-medium);font-size:14px;margin-bottom:20px;max-width:640px;line-height:1.5;">
+        A medida que se cobran las partes se sube la etapa y se encienden las
+        funcionalidades siguientes. Subir la etapa prende un lote completo de una;
+        el interruptor individual sirve para exceptuar algo puntual sin bajar la
+        etapa entera.
+      </p>
+      <div id="releaseDegraded" style="display:none;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:14px;margin-bottom:20px;font-size:14px;color:#856404;">
+        <strong>No se pudo leer el estado desde la base.</strong> Se están
+        asumiendo todas las funcionalidades activas. Corré
+        <code>supabase/migrations/004_release_flags.sql</code> en Supabase.
+      </div>
+      <div id="stagePicker" style="margin-bottom:24px;"></div>
+      <h3 style="font-family:'Playfair Display',serif;margin-bottom:12px;color:var(--brown-dark)">Funcionalidades</h3>
+      <div id="featureList"></div>
+    </div>
   </main>
 
   <div class="modal-overlay" id="modalOverlay"><div class="modal" id="modalContent"></div></div>
@@ -233,8 +252,79 @@
     }
 
     function loadPage(page) {
-      var fns = { dashboard: loadDashboard, services: loadServices, pricing: loadPricing, calendar: loadCalendar, employees: loadEmployees, schedule: loadSchedule, cash: loadCash, clients: loadClients, giftcards: loadGiftCards };
+      var fns = { dashboard: loadDashboard, services: loadServices, pricing: loadPricing, calendar: loadCalendar, employees: loadEmployees, schedule: loadSchedule, cash: loadCash, clients: loadClients, giftcards: loadGiftCards, release: loadRelease };
       if (fns[page]) fns[page]();
+    }
+
+    // ==================== RELEASE ====================
+    // Qué se puede usar y qué no, según en qué etapa esté el cobro. El estado se
+    // consulta una vez al abrir el panel y se usa para esconder del menú las
+    // secciones que todavía no están.
+    var releaseState = null;
+    var NAV_FEATURE = { cash: 'cash', giftcards: 'gift_cards', employees: 'employee_panel' };
+
+    async function loadRelease() {
+      var st = await api('/api/admin/features');
+      if (!st) return;
+      releaseState = st;
+
+      document.getElementById('releaseDegraded').style.display = st.degraded ? 'block' : 'none';
+
+      var picker = document.getElementById('stagePicker');
+      picker.innerHTML = st.stages.map(function(s) {
+        var actual = s.stage === st.stage;
+        var pasada = s.stage < st.stage;
+        return '<button class="action-btn" style="margin:0 8px 8px 0;padding:10px 16px;' +
+          (actual ? 'background:#28a745;color:white;' : pasada ? '' : 'background:#ddd;color:#888;') +
+          '"' + (st.degraded ? ' disabled' : '') +
+          ' onclick="changeStage(' + s.stage + ')">' +
+          s.stage + '. ' + s.label + (actual ? ' ←' : '') + '</button>';
+      }).join('');
+
+      document.getElementById('featureList').innerHTML =
+        '<div class="data-table"><table><thead><tr><th>Funcionalidad</th><th>Etapa</th><th>Estado</th><th></th></tr></thead><tbody>' +
+        st.features.map(function(f) {
+          var nota = f.locked ? 'siempre activa' : (f.enabled ? '' : 'apagada a mano');
+          return '<tr>' +
+            '<td><strong>' + f.label + '</strong><br><span style="font-size:12px;color:var(--brown-medium)">' + f.description + '</span></td>' +
+            '<td>' + f.stage + '</td>' +
+            '<td><span class="badge ' + (f.active ? 'badge-confirmed' : '') + '">' +
+              (f.active ? 'Activa' : (f.enabled ? 'Espera etapa ' + f.stage : 'Apagada')) + '</span>' +
+              (nota ? ' <span style="font-size:11px;color:#999">' + nota + '</span>' : '') + '</td>' +
+            '<td>' + (f.locked ? '' :
+              '<label style="cursor:pointer"><input type="checkbox"' + (f.enabled ? ' checked' : '') +
+              (st.degraded ? ' disabled' : '') +
+              ' onchange="toggleFeature(\'' + f.key + '\', this.checked)"></label>') + '</td>' +
+            '</tr>';
+        }).join('') + '</tbody></table></div>';
+
+      applyReleaseToNav(st);
+    }
+
+    // Esconde del menú lo que todavía no está habilitado, para que la pantalla
+    // no prometa cosas que al hacer clic dan error.
+    function applyReleaseToNav(st) {
+      Object.keys(NAV_FEATURE).forEach(function(page) {
+        var item = document.querySelector('.nav-item[data-page="' + page + '"]');
+        if (!item) return;
+        var f = st.features.filter(function(x) { return x.key === NAV_FEATURE[page]; })[0];
+        item.style.display = (f && f.active) ? '' : 'none';
+      });
+    }
+
+    async function changeStage(stage) {
+      if (!confirm('Cambiar a la etapa ' + stage + '?\n\nSe encienden de una todas las funcionalidades de esa etapa y de las anteriores.')) return;
+      var res = await api('/api/admin/features/stage', 'PUT', { stage: stage });
+      if (res && res.error) { alert(res.error); return; }
+      if (res) { releaseState = res; applyReleaseToNav(res); }
+      await loadRelease();
+    }
+
+    async function toggleFeature(key, enabled) {
+      var res = await api('/api/admin/features/flags/' + key, 'PUT', { enabled: enabled });
+      if (res && res.error) { alert(res.error); await loadRelease(); return; }
+      if (res) releaseState = res;
+      await loadRelease();
     }
 
     async function loadDashboard() {
@@ -550,6 +640,10 @@
     async function init() {
       await loadServices();
       loadDashboard();
+      // El estado de release se carga una vez al entrar para poder esconder del
+      // menú lo que todavía no corresponde. Se hace al final y no bloquea: si
+      // falla, el menú queda como está y las secciones abren igual.
+      try { await loadRelease(); } catch (e) { console.error(e); }
     }
     init();
   </script>

@@ -1,11 +1,15 @@
 {
   "name": "landing-vas-main",
   "version": "1.0.0",
-  "description": "Esta es una landing page para VAS Centro de Estética, un centro de belleza en Bahía Blanca. La página está actualmente en una fase primitiva de desarrollo y se encuentra en producción.",
-  "main": "main.js",
+  "description": "Landing y sistema de reservas de VAS Centro de Estética (Bahía Blanca). Agenda con seña obligatoria, panel de administración, portal de profesionales, caja diaria y gift cards.",
+  "main": "server.js",
   "scripts": {
     "dev": "nodemon server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "release": "node scripts/release.js",
+    "release:status": "node scripts/release.js status",
+    "release:plan": "node scripts/release.js plan",
+    "release:next": "node scripts/release.js next"
   },
   "keywords": [],
   "author": "",

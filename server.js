@@ -42,25 +42,34 @@ const adminScheduleRouter = require('./api/admin/schedule');
 const adminCashRouter = require('./api/admin/cash');
 const adminClientsRouter = require('./api/admin/clients');
 const adminGiftCardsRouter = require('./api/admin/giftcards');
+const adminFeaturesRouter = require('./api/admin/features');
 const employeeAuthRouter = require('./api/employee/auth');
 const employeeBookingsRouter = require('./api/employee/bookings');
 const paymentRouter = require('./api/payment');
+const { requireFeature } = require('./lib/features');
 
+// Reservas, servicios y agenda: la base del sistema, sin flag. Si esto se
+// apaga no queda producto, y no es algo que se pueda cobrar por separado.
 app.use('/api/services', servicesRouter);
 app.use('/api/available-slots', availableSlotsRouter);
 app.use('/api/book', bookRouter);
-app.use('/api/giftcard', giftcardPublicRouter);
 app.use('/api/marketing', marketingRouter);
 app.use('/api/cron/send-reminders', sendRemindersRouter);
 app.use('/api/cron/expire-bookings', expireBookingsRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/admin', adminServicesRouter);
 app.use('/api/admin', adminScheduleRouter);
-app.use('/api/admin', adminCashRouter);
 app.use('/api/admin', adminClientsRouter);
-app.use('/api/admin/giftcards', adminGiftCardsRouter);
-app.use('/api/employee/auth', employeeAuthRouter);
-app.use('/api/employee', employeeBookingsRouter);
+app.use('/api/admin/features', adminFeaturesRouter);
+
+// A partir de acá cada bloque se enciende con su etapa de release. La ruta
+// devuelve 403 con el motivo si todavía no corresponde, así un link viejo
+// explica qué pasa en vez de dar un 404 seco.
+app.use('/api/giftcard', requireFeature('gift_cards'), giftcardPublicRouter);
+app.use('/api/admin/giftcards', requireFeature('gift_cards'), adminGiftCardsRouter);
+app.use('/api/admin/cash', requireFeature('cash'), adminCashRouter);
+app.use('/api/employee', requireFeature('employee_panel'), employeeBookingsRouter);
+app.use('/api/employee/auth', requireFeature('employee_panel'), employeeAuthRouter);
 app.use('/api/payment', paymentRouter);
 
 app.get('/{*splat}', (req, res) => {
