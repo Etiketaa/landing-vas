@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const supabase = require('../lib/supabase');
+// signInWithPassword va sobre un cliente propio. Si se hiciera sobre el cliente
+// compartido de service_role, persistiría la sesión del usuario adentro de él y
+// todas las escrituras del proceso pasarían a fallar por RLS. Ver lib/supabase.js.
+const authClient = require('../lib/supabase-auth');
 
 router.post('/login', async (req, res) => {
   try {
@@ -10,7 +14,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Email y contraseña requeridos' });
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await authClient.auth.signInWithPassword({
       email,
       password
     });

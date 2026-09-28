@@ -387,14 +387,24 @@
     async function rejectBooking(id) { if (!confirm('Rechazar comprobante y cancelar reserva?')) return; await api('/api/payment/' + id + '/reject', 'POST'); loadCalendar(); }
 
     async function viewPaymentProof(id) {
-      var res = await fetch('/api/payment/' + id);
-      var booking = await res.json();
-      if (booking.payment_proof) {
-        var win = window.open('', '_blank');
-        win.document.write('<html><head><title>Comprobante - ' + booking.client_name + '</title><style>body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f5f5f5}img{max-width:90%;max-height:90vh;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.2)}</style></head><body><img src="' + booking.payment_proof + '" alt="Comprobante"></body></html>');
-      } else {
-        alert('Este cliente aun no subio comprobante');
+      // El endpoint exige token: sin él responde 403. La URL que llega en
+      // `payment_proof` es una signed URL de Storage, no el base64 de la fila.
+      var res = await fetch('/api/payment/' + encodeURIComponent(id), {
+        headers: { 'Authorization': 'Bearer ' + TOKEN }
+      });
+      var booking = await res.json().catch(function() { return {}; });
+
+      if (res.status === 401) {
+        localStorage.removeItem('admin_token');
+        window.location.href = '/admin/login.html';
+        return;
       }
+      if (booking.error) { alert(booking.error); return; }
+      if (!booking.payment_proof) { alert('Este cliente aun no subio comprobante'); return; }
+
+      var win = window.open('', '_blank');
+      if (!win) { window.open(booking.payment_proof, '_blank'); return; }
+      win.document.write('<html><head><title>Comprobante - ' + booking.client_name + '</title><style>body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f5f5f5}img{max-width:90%;max-height:90vh;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.2)}</style></head><body><img src="' + booking.payment_proof + '" alt="Comprobante"></body></html>');
     }
 
     async function loadSchedule() {

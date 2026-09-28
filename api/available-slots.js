@@ -3,6 +3,7 @@ const router = express.Router();
 const supabase = require('../lib/supabase');
 const { calculatePrice } = require('../lib/pricing');
 const { getScheduleForDate, getBookedIntervals, generateSlots, minutesToTime } = require('../lib/schedule');
+const { expireUnpaidBookings } = require('../lib/expire-unpaid');
 
 router.get('/', async (req, res) => {
   try {
@@ -15,6 +16,10 @@ router.get('/', async (req, res) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return res.status(400).json({ error: 'Formato de fecha inválido' });
     }
+
+    // Antes de leer la agenda, libera los turnos con la seña vencida. Si no, un
+    // horario que alguien reservó y abandoné queda ocupado para siempre.
+    await expireUnpaidBookings();
 
     const { data: service, error: serviceError } = await supabase
       .from('services')

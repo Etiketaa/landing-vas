@@ -185,7 +185,7 @@
       <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         <p>Haz clic para subir tu comprobante</p>
-        <div class="hint">Formatos: JPG, PNG, PDF (max 5MB)</div>
+        <div class="hint">Formatos: JPG, PNG, PDF (max 12MB)</div>
         <input type="file" id="fileInput" accept="image/*,.pdf" style="display:none" onchange="handleFile(this)">
         <img id="preview" alt="Vista previa">
       </div>
@@ -209,20 +209,35 @@
 
   <script>
     var API_BASE = window.location.origin;
-    var bookingId = new URLSearchParams(window.location.search).get('id');
+    var params = new URLSearchParams(window.location.search);
+    // `id` es el nombre viejo del parámetro; se sigue aceptando para que los
+    // links que ya se hayan mandado no queden rotos.
+    var bookingId = params.get('booking') || params.get('id');
+    // El contacto viaja en la URL y es lo que prueba que la reserva es tuya.
+    // El endpoint lo exige: sin él el comprobante se rechaza.
+    var clientContact = params.get('contact') || '';
     var bookingData = null;
     var selectedFile = null;
     var timerInterval = null;
 
+    function showError(text) {
+      document.getElementById('errorMsg').textContent = text;
+      document.getElementById('errorMsg').style.display = 'block';
+    }
+
     async function init() {
       if (!bookingId) {
-        document.getElementById('errorMsg').textContent = 'ID de reserva no valido';
-        document.getElementById('errorMsg').style.display = 'block';
+        showError('No encontramos la reserva. Abrí el link que te enviamos por WhatsApp.');
+        return;
+      }
+
+      if (!clientContact) {
+        showError('Falta el teléfono en el link. Pedinos el link de pago otra vez por WhatsApp.');
         return;
       }
 
       try {
-        var res = await fetch(API_BASE + '/api/payment/' + bookingId);
+        var res = await fetch(API_BASE + '/api/payment/' + encodeURIComponent(bookingId) + '?contact=' + encodeURIComponent(clientContact));
         bookingData = await res.json();
         
         if (bookingData.error) {
@@ -283,13 +298,12 @@
     function handleFile(input) {
       var file = input.files[0];
       if (!file) return;
-      
-      if (file.size > 5 * 1024 * 1024) {
-        document.getElementById('errorMsg').textContent = 'El archivo no puede superar 5MB';
-        document.getElementById('errorMsg').style.display = 'block';
+
+      if (file.size > 12 * 1024 * 1024) {
+        showError('El archivo es demasiado grande. Máximo 12MB.');
         return;
       }
-      
+
       selectedFile = file;
       var preview = document.getElementById('preview');
       var reader = new FileReader();
@@ -302,40 +316,78 @@
       reader.readAsDataURL(file);
     }
 
+    // Reduce la imagen antes de mandarla. Una foto de celular pesa 2-5 MB y al
+    // convertirla a base64 crece otro 33%: sin esto el servidor la rechaza con
+    // 413 y la clienta se queda sin poder pagar la seña. Un comprobante de
+    // transferencia sólo necesita leerse, así que 1600px y JPEG qualities se
+    // alcanzan con sobra.
+    function compressImage(file) {
+      return new Promise(function(resolve, reject) {
+        if (file.type === 'application/pdf') {
+          var pdfReader = new FileReader();
+          pdfReader.onload = function(e) { resolve(e.target.result); };
+          pdfReader.onerror = reject;
+          pdfReader.readAsDataURL(file);
+          return;
+        }
+
+        var reader = new FileReader();
+        reader.onerror = reject;
+        reader.onload = function(e) {
+          var img = new Image();
+          img.onerror = reject;
+          img.onload = function() {
+            var maxDim = 1600;
+            var scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+            var w = Math.max(1, Math.round(img.width * scale));
+            var h = Math.max(1, Math.round(img.height * scale));
+
+            var canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            var ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, w, h);
+            ctx.drawImage(img, 0, 0, w, h);
+
+            resolve(canvas.toDataURL('image/jpeg', 0.75));
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
     async function submitPayment() {
       if (!selectedFile || !bookingId) return;
-      
+
       var btn = document.getElementById('btnSubmit');
       btn.disabled = true;
       btn.textContent = 'Enviando...';
-      
+      document.getElementById('errorMsg').style.display = 'none';
+
       try {
-        var reader = new FileReader();
-        reader.onload = async function(e) {
-          var base64 = e.target.result;
-          
-          var res = await fetch(API_BASE + '/api/payment/' + bookingId + '/upload', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ payment_image: base64 })
-          });
-          
-          var data = await res.json();
-          
-          if (data.error) {
-            document.getElementById('errorMsg').textContent = data.error;
-            document.getElementById('errorMsg').style.display = 'block';
-            btn.disabled = false;
-            btn.textContent = 'Enviar comprobante';
-            return;
-          }
-          
-          showSuccess();
-        };
-        reader.readAsDataURL(selectedFile);
+        var base64 = await compressImage(selectedFile);
+
+        var res = await fetch(API_BASE + '/api/payment/' + encodeURIComponent(bookingId) + '/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ payment_image: base64, client_contact: clientContact })
+        });
+
+        var data = await res.json().catch(function() { return {}; });
+
+        if (!res.ok || data.error) {
+          showError(data.error || 'No pudimos recibir el comprobante. Intentá de nuevo.');
+          btn.disabled = false;
+          btn.textContent = 'Enviar comprobante';
+          return;
+        }
+
+        showSuccess();
       } catch (e) {
-        document.getElementById('errorMsg').textContent = 'Error al enviar';
-        document.getElementById('errorMsg').style.display = 'block';
+        console.error(e);
+        showError('Error al enviar el comprobante. Revisá tu conexión e intentá de nuevo.');
         btn.disabled = false;
         btn.textContent = 'Enviar comprobante';
       }

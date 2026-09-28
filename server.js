@@ -10,6 +10,13 @@ const PORT = process.env.PORT || 3000;
 
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({ origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : true }));
+// El comprobante de seña es la única carga binaria del sistema y llega como
+// data URL (base64, que engorda el archivo ~33%). Con el límite global de 1 MB
+// una foto de celular normal rebotaba con 413 y la clienta no podía pagar, así
+// que la seña obligatoria era impagable. Se registra antes del parser global y
+// sólo para esta ruta; el resto de la API sigue con 1 MB.
+app.use('/api/payment', express.json({ limit: '6mb' }));
+
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -28,6 +35,7 @@ const bookRouter = require('./api/book');
 const giftcardPublicRouter = require('./api/giftcard');
 const marketingRouter = require('./api/marketing');
 const sendRemindersRouter = require('./api/cron/send-reminders');
+const expireBookingsRouter = require('./api/cron/expire-bookings');
 const authRouter = require('./api/auth');
 const adminServicesRouter = require('./api/admin/services');
 const adminScheduleRouter = require('./api/admin/schedule');
@@ -44,6 +52,7 @@ app.use('/api/book', bookRouter);
 app.use('/api/giftcard', giftcardPublicRouter);
 app.use('/api/marketing', marketingRouter);
 app.use('/api/cron/send-reminders', sendRemindersRouter);
+app.use('/api/cron/expire-bookings', expireBookingsRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/admin', adminServicesRouter);
 app.use('/api/admin', adminScheduleRouter);

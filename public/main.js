@@ -220,16 +220,70 @@ form?.addEventListener("submit", async (e) => {
     if (!res.ok) throw new Error(data.error || "Error");
 
     const whatsappLink = data.whatsapp?.client || '#';
-    msg.innerHTML = `
-      <div style="text-align: center;">
-        <p style="margin-bottom: 12px;">Turno reservado exitosamente ✨</p>
-        <a href="${whatsappLink}" target="_blank" rel="noopener" 
-           style="display: inline-block; background: #25d366; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-bottom: 8px;">
-          <i class="ri-whatsapp-line"></i> Confirmar por WhatsApp
-        </a>
-        <p style="font-size: 12px; color: #666;">Hacé click para enviar los datos del turno</p>
-      </div>
-    `;
+    const bk = data.booking || {};
+
+    // La seña es obligatoria: si hay que pagar, el turno todavía no está
+    // confirmado y el mensaje tiene que decirlo con el importe, el vencimiento
+    // y el link para pagar. Antes solo ofrecía mandar los datos por WhatsApp,
+    // sin monto ni link, y el turno quedaba sin pagar para siempre.
+    if (bk.deposit_required) {
+      const mins = bk.deposit_deadline
+        ? Math.max(0, Math.round((new Date(bk.deposit_deadline) - Date.now()) / 60000))
+        : 10;
+      const money = (n) => '$' + Number(n).toLocaleString('es-AR');
+
+      msg.innerHTML = `
+        <div style="text-align: center;">
+          <p style="margin-bottom: 6px;">Turno reservado ✨</p>
+          <p style="font-size: 13px; color: #666; margin-bottom: 14px;">
+            ${bk.service} · ${bk.date} a las ${bk.time}
+          </p>
+
+          <div style="background: #fff5f5; border: 1px solid #f4c7c3; border-radius: 10px; padding: 14px; margin-bottom: 14px; text-align: left;">
+            <p style="font-size: 13px; color: #8c2f2f; margin-bottom: 4px;">
+              Falta pagar la seña para confirmar el turno
+            </p>
+            <p style="font-size: 22px; font-weight: 700; color: #8c2f2f; margin: 0 0 6px;">
+              ${money(bk.deposit_amount)}
+            </p>
+            <p style="font-size: 12px; color: #a45050; margin: 0;">
+              Vence en ${mins} ${mins === 1 ? 'minuto' : 'minutos'}. Pasado ese tiempo el horario se libera.
+            </p>
+          </div>
+
+          ${data.payment_url ? `
+            <a href="${data.payment_url}"
+               style="display: inline-block; background: #b3543f; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-bottom: 10px;">
+              Pagar seña y subir comprobante
+            </a>
+            <p style="font-size: 12px; color: #666; margin-bottom: 14px;">
+              Te transfers por CBU o alias y subís la foto del comprobante
+            </p>
+          ` : `
+            <p style="font-size: 12px; color: #666; margin-bottom: 14px;">
+              Escribinos por WhatsApp para que te enviemos los datos de la transferencia
+            </p>
+          `}
+
+          <br>
+          <a href="${whatsappLink}" target="_blank" rel="noopener"
+             style="display: inline-block; background: #25d366; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+            <i class="ri-whatsapp-line"></i> Consultar por WhatsApp
+          </a>
+        </div>
+      `;
+    } else {
+      msg.innerHTML = `
+        <div style="text-align: center;">
+          <p style="margin-bottom: 12px;">Turno reservado exitosamente ✨</p>
+          <a href="${whatsappLink}" target="_blank" rel="noopener"
+             style="display: inline-block; background: #25d366; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-bottom: 8px;">
+            <i class="ri-whatsapp-line"></i> Confirmar por WhatsApp
+          </a>
+          <p style="font-size: 12px; color: #666;">Hacé click para enviar los datos del turno</p>
+        </div>
+      `;
+    }
     msg.style.color = "#7f5539";
 
     form.reset();

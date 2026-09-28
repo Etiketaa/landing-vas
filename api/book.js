@@ -3,8 +3,22 @@ const router = express.Router();
 const supabase = require('../lib/supabase');
 const { calculatePrice } = require('../lib/pricing');
 const { validateBookingTime } = require('../lib/schedule');
+const { expireUnpaidBookings } = require('../lib/expire-unpaid');
 
 const OWNER_WHATSAPP = '5492914140982';
+
+// URL pública del sitio. En Vercel llega por x-forwarded-proto/host, así que se
+// arma desde la request y no hay que hardcodear el dominio (que además todavía
+// no está comprado).
+function getBaseUrl(req) {
+  if (process.env.BASE_URL) return process.env.BASE_URL.replace(/\/$/, '');
+
+  const proto = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  if (!host) return '';
+
+  return `${proto}://${host}`;
+}
 
 router.post('/', async (req, res) => {
   try {
@@ -62,6 +76,10 @@ router.post('/', async (req, res) => {
 
     const initialStatus = depositAmount > 0 ? 'pending_payment' : 'confirmed';
 
+    const depositDeadline = depositAmount > 0
+      ? new Date(Date.now() + 10 * 60 * 1000).toISOString()
+      : null;
+
     const { data: booking, error: insertError } = await supabase
       .from('bookings')
       .insert({
@@ -75,12 +93,25 @@ router.post('/', async (req, res) => {
         deposit_amount: depositAmount,
         status: initialStatus,
         notes,
-        deposit_deadline: depositAmount > 0 ? new Date(Date.now() + 10 * 60 * 1000).toISOString() : null
+        deposit_deadline: depositDeadline
       })
       .select()
       .single();
 
     if (insertError) throw insertError;
+
+    // Libera horarios con seña vencida antes de evaluar el solapamiento, para no
+    // rechazar un turno porque alguien más dejó un turno muerto ahí.
+    await expireUnpaidBookings();
+
+    // La seña es obligatoria, así que la clienta necesita un link real para
+    // pagarla. Antes se le decía "subí el comprobante en el link que te
+    // enviamos" y ese link no existía en ninguna parte: la página /pago nunca
+    // estuvo enlazada, con lo cual el turno quedaba impagable.
+    const baseUrl = getBaseUrl(req);
+    const paymentUrl = depositAmount > 0 && baseUrl
+      ? `${baseUrl}/pago/?booking=${encodeURIComponent(booking.id)}&contact=${encodeURIComponent(contact)}`
+      : null;
 
     const { data: existingClient } = await supabase
       .from('clients')
@@ -115,7 +146,7 @@ SEÑA: $${depositAmount.toLocaleString('es-AR')}
 
 El cliente tiene 10 minutos para subir comprobante de transferencia.
 CBU: ${proCbu}
-Alias: ${proAlias}`
+Alias: ${proAlias}${paymentUrl ? `\n\nLink de pago para la clienta:\n${paymentUrl}` : ''}`
       : `NUEVO TURNO RESERVADO 💅
 
 Cliente: ${name}
@@ -136,7 +167,10 @@ CBU: ${proCbu}
 Alias: ${proAlias}
 Monto: $${depositAmount.toLocaleString('es-AR')}
 
-Una vez que realices la transferencia, subí el comprobante en el link que te enviamos.
+Una vez que realices la transferencia, subí el comprobante acá:
+${paymentUrl || 'escribinos y te enviamos el link'}
+
+Tenés 10 minutos. Pasado ese tiempo el turno se libera.
 
 Servicio: ${priceInfo.service_name}
 Fecha: ${date}
@@ -181,12 +215,16 @@ ${depositAmount > 0 ? `Seña: $${depositAmount.toLocaleString('es-AR')}` : ''}`;
         time,
         final_price: priceInfo.final_price,
         deposit_amount: depositAmount,
+        deposit_deadline: depositDeadline,
         status: initialStatus,
+        // La clienta tiene que pagar para que el turno quede confirmado.
+        deposit_required: depositAmount > 0,
         price_breakdown: {
           base: priceInfo.base_price,
           applied_rules: priceInfo.applied_rules
         }
       },
+      payment_url: paymentUrl,
       whatsapp: {
         owner: ownerWhatsApp,
         client: clientWhatsApp,

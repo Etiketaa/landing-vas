@@ -1,20 +1,70 @@
 const express = require('express');
 const router = express.Router();
 const supabase = require('../lib/supabase');
-const { requireAdmin } = require('../lib/auth');
+const { requireAdmin, resolveUser, isAdmin } = require('../lib/auth');
 
+const PROOF_BUCKET = 'payment-proofs';
+const SIGNED_URL_TTL = 60 * 60; // 1 hora: alcanza para revisar el comprobante
+
+// El comprobante se guarda en Supabase Storage, no como base64 dentro de la fila.
+// Antes venía en el cuerpo del POST contra un límite de 1 MB, así que cualquier
+// foto de celular (2-5 MB) rebotaba con 413 y la clienta no podía pagar la seña.
+// Guardarlo fuera de la fila además evita que listar reservas descargue megabytes
+// de imagen por request.
+function parseDataUrl(dataUrl) {
+  const match = /^data:([\w/+.-]+);base64,(.+)$/s.exec(dataUrl || '');
+  if (!match) return null;
+
+  const [, mime, base64] = match;
+  const ext = {
+    'image/jpeg': 'jpg',
+    'image/jpg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'image/heic': 'heic',
+    'application/pdf': 'pdf'
+  }[mime.toLowerCase()];
+
+  if (!ext) return null;
+
+  return { mime: mime.toLowerCase(), ext, buffer: Buffer.from(base64, 'base64') };
+}
+
+async function removeProof(path) {
+  if (!path) return;
+  try {
+    await supabase.storage.from(PROOF_BUCKET).remove([path]);
+  } catch (err) {
+    console.error('No se pudo borrar el comprobante', path, err.message);
+  }
+}
+
+// ==================== LECTURA ====================
+// Solo el admin o la propia clienta de la reserva. Antes esto era público: con
+// el UUID de la reserva se leían nombre, teléfono y los datos bancarios (CBU y
+// alias) del profesional.
 router.get('/:bookingId', async (req, res) => {
   try {
     const { bookingId } = req.params;
+    // El parámetro de la URL se llama `contact` (ver public/pago/index.html).
+    // Se acepta el nombre largo también por si alguien lo usa a mano.
+    const contact = req.query.contact || req.query.client_contact;
+
+    const user = await resolveUser(req);
 
     const { data: booking, error } = await supabase
       .from('bookings')
-      .select('id, client_name, service_id, employee_id, booking_date, booking_time, final_price, deposit_amount, status, deposit_deadline, services(name)')
+      .select('id, client_name, client_contact, service_id, employee_id, booking_date, booking_time, final_price, deposit_amount, status, deposit_deadline, payment_proof, payment_uploaded_at, services(name)')
       .eq('id', bookingId)
       .single();
 
     if (error || !booking) {
       return res.status(404).json({ error: 'Reserva no encontrada' });
+    }
+
+    const isOwner = Boolean(contact) && booking.client_contact === String(contact).trim();
+    if (!isAdmin(user) && !isOwner) {
+      return res.status(403).json({ error: 'No autorizado' });
     }
 
     if (booking.employee_id) {
@@ -26,12 +76,34 @@ router.get('/:bookingId', async (req, res) => {
       booking.professional = proData;
     }
 
+    // El admin recibe una URL firmada porque el bucket es privado. La clienta
+    // recibe la misma URL: necesita ver la CBU para transferir la seña.
+    if (booking.payment_proof) {
+      const { data: signed } = await supabase.storage
+        .from(PROOF_BUCKET)
+        .createSignedUrl(booking.payment_proof, SIGNED_URL_TTL);
+
+      if (signed?.signedUrl) {
+        // En la respuesta queda en `payment_proof` para no romper al panel, que
+        // lo usa directo como src de un <img>. El admin ya llega con token.
+        booking.payment_proof = signed.signedUrl;
+      } else {
+        booking.payment_proof = null;
+      }
+    }
+
     res.json(booking);
   } catch (err) {
+    console.error('Error al obtener reserva:', err.message);
     res.status(500).json({ error: 'Error al obtener reserva' });
   }
 });
 
+// ==================== SUBIDA DEL COMPROBANTE ====================
+// La seña es obligatoria: esta es la única vía por la que un turno pasa de
+// "reservado" a "confirmado". Requiere que el contacto coincida con el de la
+// reserva; antes el chequeo era `if (client_contact && ...)` y el frontend no lo
+// mandaba, así que en la práctica no había verificación alguna.
 router.post('/:bookingId/upload', async (req, res) => {
   try {
     const { bookingId } = req.params;
@@ -41,9 +113,22 @@ router.post('/:bookingId/upload', async (req, res) => {
       return res.status(400).json({ error: 'Comprobante requerido' });
     }
 
+    if (!client_contact) {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+
+    const file = parseDataUrl(payment_image);
+    if (!file) {
+      return res.status(400).json({ error: 'Formato de comprobante no válido. Usá una imagen JPG, PNG o PDF.' });
+    }
+
+    if (file.buffer.length > 4 * 1024 * 1024) {
+      return res.status(413).json({ error: 'El comprobante es demasiado grande. Máximo 4 MB.' });
+    }
+
     const { data: booking } = await supabase
       .from('bookings')
-      .select('deposit_deadline, status, client_contact')
+      .select('id, deposit_deadline, status, client_contact, payment_proof')
       .eq('id', bookingId)
       .single();
 
@@ -51,12 +136,16 @@ router.post('/:bookingId/upload', async (req, res) => {
       return res.status(404).json({ error: 'Reserva no encontrada' });
     }
 
-    if (client_contact && booking.client_contact !== client_contact) {
+    if (booking.client_contact !== String(client_contact).trim()) {
       return res.status(403).json({ error: 'No autorizado' });
     }
 
+    if (booking.status === 'confirmed') {
+      return res.status(400).json({ error: 'Esta reserva ya fue confirmada' });
+    }
+
     if (booking.status !== 'pending_payment') {
-      return res.status(400).json({ error: 'Esta reserva ya fue confirmada o cancelada' });
+      return res.status(400).json({ error: 'Esta reserva ya tiene un comprobante cargado o fue cancelada' });
     }
 
     if (booking.deposit_deadline && new Date(booking.deposit_deadline) < new Date()) {
@@ -67,57 +156,121 @@ router.post('/:bookingId/upload', async (req, res) => {
       return res.status(400).json({ error: 'Tiempo de pago expirado. La reserva fue cancelada.' });
     }
 
-    const { data, error } = await supabase
+    const path = `bookings/${bookingId}-${Date.now()}.${file.ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(PROOF_BUCKET)
+      .upload(path, file.buffer, { contentType: file.mime, upsert: true });
+
+    if (uploadError) {
+      console.error('Error al guardar comprobante:', uploadError.message);
+      return res.status(500).json({ error: 'No pudimos guardar el comprobante. Intentá de nuevo.' });
+    }
+
+    // Si el cliente reintenta, el archivo anterior queda huérfano en el bucket.
+    const previous = booking.payment_proof;
+    if (previous) await removeProof(previous);
+
+    const { data: updated, error: updateError } = await supabase
       .from('bookings')
       .update({
-        payment_proof: payment_image,
+        payment_proof: path,
         payment_uploaded_at: new Date().toISOString(),
         status: 'pending_confirmation'
       })
       .eq('id', bookingId)
-      .select()
+      .select('id, status, payment_uploaded_at')
       .single();
 
-    if (error) throw error;
+    if (updateError) {
+      await removeProof(path);
+      throw updateError;
+    }
 
-    res.json({ message: 'Comprobante subido correctamente. Pendiente de confirmación del administrador.' });
+    res.json({
+      message: 'Comprobante recibido. Vamos a verificarlo y te confirmamos el turno.',
+      booking: updated
+    });
   } catch (err) {
+    console.error('Error al subir comprobante:', err.message);
     res.status(500).json({ error: 'Error al subir comprobante' });
   }
 });
 
+// ==================== CONFIRMAR ====================
+// La seña es obligatoria, así que confirmar una reserva sin comprobante cargado
+// tiene que ser imposible: este endpoint antes hacía UPDATE sin mirar el estado.
 router.post('/:bookingId/confirm', requireAdmin, async (req, res) => {
   try {
     const { bookingId } = req.params;
 
-    const { data, error } = await supabase
+    const { data: booking } = await supabase
       .from('bookings')
-      .update({ status: 'confirmed' })
+      .select('id, status, payment_proof, deposit_amount')
       .eq('id', bookingId)
-      .select()
       .single();
 
+    if (!booking) {
+      return res.status(404).json({ error: 'Reserva no encontrada' });
+    }
+
+    if (booking.status === 'confirmed') {
+      return res.status(400).json({ error: 'La reserva ya estaba confirmada' });
+    }
+
+    if (booking.deposit_amount > 0 && !booking.payment_proof) {
+      return res.status(400).json({
+        error: 'No se puede confirmar: la seña es obligatoria y no hay comprobante cargado'
+      });
+    }
+
+    const { error } = await supabase
+      .from('bookings')
+      .update({ status: 'confirmed' })
+      .eq('id', bookingId);
+
     if (error) throw error;
+
     res.json({ message: 'Reserva confirmada' });
   } catch (err) {
+    console.error('Error al confirmar reserva:', err.message);
     res.status(500).json({ error: 'Error al confirmar reserva' });
   }
 });
 
+// ==================== RECHAZAR ====================
+// Además de cancelar, borra el comprobante de Storage: el archivo ya no se usa
+// y la reserva puede quedar registrada sin el dato de la clienta.
 router.post('/:bookingId/reject', requireAdmin, async (req, res) => {
   try {
     const { bookingId } = req.params;
 
-    const { data, error } = await supabase
+    const { data: booking } = await supabase
       .from('bookings')
-      .update({ status: 'cancelled', payment_proof: null, payment_uploaded_at: null })
+      .select('id, status, payment_proof')
       .eq('id', bookingId)
-      .select()
       .single();
 
+    if (!booking) {
+      return res.status(404).json({ error: 'Reserva no encontrada' });
+    }
+
+    if (booking.status === 'cancelled') {
+      return res.status(400).json({ error: 'La reserva ya estaba cancelada' });
+    }
+
+    const { error } = await supabase
+      .from('bookings')
+      .update({ status: 'cancelled', payment_proof: null, payment_uploaded_at: null })
+      .eq('id', bookingId);
+
     if (error) throw error;
+
+    await removeProof(booking.payment_proof);
+
     res.json({ message: 'Reserva cancelada' });
   } catch (err) {
+    console.error('Error al cancelar reserva:', err.message);
     res.status(500).json({ error: 'Error al cancelar reserva' });
   }
 });
