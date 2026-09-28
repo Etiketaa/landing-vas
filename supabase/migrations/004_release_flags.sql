@@ -22,8 +22,13 @@ CREATE TABLE IF NOT EXISTS feature_flags (
 ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE feature_flags ENABLE ROW LEVEL SECURITY;
 
+-- Postgres no tiene CREATE POLICY IF NOT EXISTS, así que se borra la anterior
+-- antes de crearla y el bloque se puede correr las veces que haga falta.
+DROP POLICY IF EXISTS "Service role full access" ON app_settings;
 CREATE POLICY "Service role full access" ON app_settings
   FOR ALL USING (auth.role() = 'service_role');
+
+DROP POLICY IF EXISTS "Service role full access" ON feature_flags;
 CREATE POLICY "Service role full access" ON feature_flags
   FOR ALL USING (auth.role() = 'service_role');
 

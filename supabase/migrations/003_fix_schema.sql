@@ -31,6 +31,9 @@ CREATE TABLE IF NOT EXISTS marketing_leads (
 
 ALTER TABLE marketing_leads ENABLE ROW LEVEL SECURITY;
 
+-- Postgres no tiene CREATE POLICY IF NOT EXISTS, así que se borra la anterior
+-- antes de crearla y el bloque se puede correr las veces que haga falta.
+DROP POLICY IF EXISTS "Service role full access" ON marketing_leads;
 CREATE POLICY "Service role full access" ON marketing_leads
   FOR ALL USING (auth.role() = 'service_role');
 
