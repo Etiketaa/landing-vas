@@ -4,6 +4,7 @@ const supabase = require('../../lib/supabase');
 const supabaseAuth = require('../../lib/supabase-auth');
 const { mensajeDeError, employeeIdFromUser } = require('../../lib/employee-auth');
 const { requireEmployee } = require('../../lib/auth');
+const { getAuthUrl, handleCallback, checkConnection } = require('../../lib/google-calendar');
 
 // Login de profesionales.
 //
@@ -98,6 +99,77 @@ router.post('/login', async (req, res) => {
 // servidor si hace falta.
 router.post('/logout', requireEmployee, async (req, res) => {
   res.json({ message: 'Sesion cerrada' });
+});
+
+// ==================== GOOGLE CALENDAR OAUTH ====================
+// Inicia el flujo OAuth: la profesional hace click en "Conectar Google Calendar"
+// y se redirige a Google. El state lleva el employeeId para validar en el callback.
+router.get('/google', requireEmployee, async (req, res) => {
+  try {
+    const url = getAuthUrl(req.employee.id);
+    if (typeof url === 'object' && url.ok === false) {
+      return res.status(500).json({ error: url.error });
+    }
+    res.redirect(url);
+  } catch (err) {
+    console.error('Error en /google:', err.message);
+    res.status(500).json({ error: 'Error al iniciar conexión con Google' });
+  }
+});
+
+// Callback de Google OAuth. Recibe ?code=...&state=... y guarda el refresh_token.
+router.get('/google/callback', async (req, res) => {
+  try {
+    const { code, state, error: oauthError } = req.query;
+
+    if (oauthError) {
+      return res.redirect(`${process.env.BASE_URL || 'https://vas-centro.vercel.app'}/employee/?calendar_error=${encodeURIComponent(oauthError)}`);
+    }
+
+    if (!code || !state) {
+      return res.status(400).send('Parámetros faltantes en callback de Google');
+    }
+
+    const result = await handleCallback(code, state);
+
+    const baseUrl = process.env.BASE_URL || 'https://vas-centro.vercel.app';
+    if (result.ok) {
+      res.redirect(`${baseUrl}/employee/?calendar_connected=1`);
+    } else {
+      res.redirect(`${baseUrl}/employee/?calendar_error=${encodeURIComponent(result.error)}`);
+    }
+  } catch (err) {
+    console.error('Error en /google/callback:', err.message);
+    res.redirect(`${process.env.BASE_URL || 'https://vas-centro.vercel.app'}/employee/?calendar_error=${encodeURIComponent(err.message)}`);
+  }
+});
+
+// Verifica si la profesional tiene Google Calendar conectado y funcional.
+router.get('/google/status', requireEmployee, async (req, res) => {
+  try {
+    const result = await checkConnection(req.employee.id);
+    if (!result.ok) return res.status(500).json({ error: result.error });
+    res.json({ connected: result.connected, error: result.error });
+  } catch (err) {
+    console.error('Error en /google/status:', err.message);
+    res.status(500).json({ error: 'Error al verificar conexión' });
+  }
+});
+
+// Desconecta Google Calendar (borra el refresh_token).
+router.post('/google/disconnect', requireEmployee, async (req, res) => {
+  try {
+    const { error } = await supabase
+      .from('employees')
+      .update({ google_refresh_token: null, google_token_expiry: null })
+      .eq('id', req.employee.id);
+
+    if (error) throw error;
+    res.json({ message: 'Google Calendar desconectado' });
+  } catch (err) {
+    console.error('Error desconectando Google Calendar:', err.message);
+    res.status(500).json({ error: 'Error al desconectar' });
+  }
 });
 
 // Para que el micrositio pueda recuperar la sesión guardada en el navegador sin

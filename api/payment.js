@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../lib/supabase');
 const { requireAdmin, resolveUser, isAdmin } = require('../lib/auth');
+const { createEvent, deleteEvent } = require('../lib/google-calendar');
 
 const PROOF_BUCKET = 'payment-proofs';
 const SIGNED_URL_TTL = 60 * 60; // 1 hora: alcanza para revisar el comprobante
@@ -160,7 +161,7 @@ router.post('/mercadopago/webhook', async (req, res) => {
       return res.sendStatus(200);
     }
 
-    // Confirmar reserva atómicamente
+    // Confirmar reserva atómicamente (traemos datos para el calendario)
     const { data: booking, error } = await supabase
       .from('bookings')
       .update({
@@ -171,13 +172,35 @@ router.post('/mercadopago/webhook', async (req, res) => {
       })
       .eq('id', bookingId)
       .eq('status', 'pending_payment') // solo si sigue pendiente
-      .select()
+      .select('id, employee_id, booking_date, booking_time, client_name, services(name,duration_minutes)')
       .single();
 
     if (error || !booking) {
       console.log('No se pudo confirmar reserva por MP:', bookingId, error?.message);
     } else {
       console.log('Reserva confirmada por MercadoPago:', bookingId);
+
+      // Crear evento en Google Calendar de la profesional (si tiene conectado).
+      if (booking.employee_id) {
+        const start = new Date(`${booking.booking_date}T${booking.booking_time}`);
+        const duration = booking.services?.duration_minutes || 30;
+        const end = new Date(start.getTime() + duration * 60000);
+
+        const calResult = await createEvent({
+          employeeId: booking.employee_id,
+          summary: `${booking.services?.name || 'Turno'} — ${booking.client_name}`,
+          description: `Cliente: ${booking.client_name}\nServicio: ${booking.services?.name || '—'}\nDuración: ${duration} min\nPagado por MercadoPago`,
+          start,
+          end,
+          location: 'VAS Centro de Estética'
+        });
+
+        if (!calResult.ok) {
+          console.warn('No se pudo crear evento en Google Calendar (MP):', calResult.error);
+        } else {
+          console.log('Evento creado en Google Calendar (MP):', calResult.eventId);
+        }
+      }
     }
 
     res.sendStatus(200); // ACK obligatorio
@@ -354,7 +377,7 @@ router.post('/:bookingId/confirm', requireAdmin, async (req, res) => {
 
     const { data: booking } = await supabase
       .from('bookings')
-      .select('id, status, payment_proof, deposit_amount')
+      .select('id, status, payment_proof, deposit_amount, employee_id, booking_date, booking_time, client_name, services(name,duration_minutes)')
       .eq('id', bookingId)
       .single();
 
@@ -379,6 +402,29 @@ router.post('/:bookingId/confirm', requireAdmin, async (req, res) => {
 
     if (error) throw error;
 
+    // Crear evento en Google Calendar de la profesional (si tiene conectado).
+    // No rompe la confirmación si falla: loguea y sigue.
+    if (booking.employee_id) {
+      const start = new Date(`${booking.booking_date}T${booking.booking_time}`);
+      const duration = booking.services?.duration_minutes || 30;
+      const end = new Date(start.getTime() + duration * 60000);
+
+      const calResult = await createEvent({
+        employeeId: booking.employee_id,
+        summary: `${booking.services?.name || 'Turno'} — ${booking.client_name}`,
+        description: `Cliente: ${booking.client_name}\nServicio: ${booking.services?.name || '—'}\nDuración: ${duration} min`,
+        start,
+        end,
+        location: 'VAS Centro de Estética'
+      });
+
+      if (!calResult.ok) {
+        console.warn('No se pudo crear evento en Google Calendar:', calResult.error);
+      } else {
+        console.log('Evento creado en Google Calendar:', calResult.eventId);
+      }
+    }
+
     res.json({ message: 'Reserva confirmada' });
   } catch (err) {
     console.error('Error al confirmar reserva:', err.message);
@@ -395,7 +441,7 @@ router.post('/:bookingId/reject', requireAdmin, async (req, res) => {
 
     const { data: booking } = await supabase
       .from('bookings')
-      .select('id, status, payment_proof')
+      .select('id, status, payment_proof, employee_id, services(name,duration_minutes), client_name')
       .eq('id', bookingId)
       .single();
 
@@ -415,6 +461,14 @@ router.post('/:bookingId/reject', requireAdmin, async (req, res) => {
     if (error) throw error;
 
     await removeProof(booking.payment_proof);
+
+    // Borrar evento en Google Calendar de la profesional (si existe).
+    if (booking.employee_id) {
+      // Necesitaríamos guardar el eventId en la reserva para borrarlo exacto.
+      // Por ahora no lo tenemos, así que logueamos y la profesional lo borra a mano.
+      // TODO: guardar google_event_id en bookings al crear el evento.
+      console.log('Reserva cancelada — la profesional debe borrar el evento manualmente:', bookingId);
+    }
 
     res.json({ message: 'Reserva cancelada' });
   } catch (err) {
