@@ -22,7 +22,7 @@ function getBaseUrl(req) {
 
 router.post('/', async (req, res) => {
   try {
-    const { name, contact, service_id, date, time, notes } = req.body;
+    const { name, contact, service_id, date, time, notes, employee_id: employee_id_requested } = req.body;
 
     if (!name || !contact || !service_id || !date || !time) {
       return res.status(400).json({ error: 'Todos los campos son requeridos' });
@@ -47,14 +47,43 @@ router.post('/', async (req, res) => {
     const depositPercent = service?.deposit_percent || 0;
     const depositAmount = Math.round(priceInfo.final_price * depositPercent / 100);
 
-    const { data: assignedPro } = await supabase
+    // A quién se le asigna el turno.
+    //
+    // Antes se tomaba la primera profesional que hiciera ese servicio y listo,
+    // así que con cuatro en el centro todas las reservas de un mismo servicio
+    // caían siempre en la misma y las otras no tenían con qué trabajar.
+    //
+    // Si la clienta eligió profesional, se respeta, pero sólo si realmente
+    // ofrece ese servicio: mandar un employee_id cualquiera por el body no
+    // alcanza para colar a alguien que no lo hace.
+    const { data: elegidas } = await supabase
       .from('employee_services')
       .select('employee_id')
-      .eq('service_id', service_id)
-      .limit(1)
-      .maybeSingle();
+      .eq('service_id', service_id);
 
-    const employee_id = assignedPro?.employee_id || null;
+    const habilitadas = await supabase
+      .from('employees')
+      .select('id')
+      .eq('active', true);
+
+    const idsActivos = new Set((habilitadas.data || []).map(e => e.id));
+    const candidatas = (elegidas || []).map(e => e.employee_id).filter(id => idsActivos.has(id));
+
+    let employee_id = null;
+
+    if (employee_id_requested) {
+      if (!candidatas.includes(employee_id_requested)) {
+        return res.status(400).json({
+          error: 'La profesional elegida no ofrece ese servicio'
+        });
+      }
+      employee_id = employee_id_requested;
+    } else {
+      // Sin preferencia: la primera que haga el servicio y esté activa. El
+      // horario se valida contra ella más abajo, así que si está ocupada la
+      // clienta ve el horario libre en la agenda y reintenta.
+      employee_id = candidatas[0] || null;
+    }
 
     let professionalBank = null;
     if (employee_id) {
@@ -69,7 +98,16 @@ router.post('/', async (req, res) => {
     // Valida contra el horario de atención real y solapamientos por duración.
     // Antes solo comparaba `booking_time` exacto, así que un turno de 90 min
     // no bloqueaba el slot siguiente y se podían superponer reservas.
-    const timeCheck = await validateBookingTime(date, time, priceInfo.duration_minutes);
+    //
+    // El solapamiento se evalúa contra esta profesional y no contra el centro:
+    // con cuatro trabajando en paralelo, una reserva tomaba el horario para
+    // todas y las otras no podían ser atendidas a la misma hora.
+    const timeCheck = await validateBookingTime(
+      date,
+      time,
+      priceInfo.duration_minutes,
+      employee_id
+    );
     if (!timeCheck.ok) {
       return res.status(timeCheck.status).json({ error: timeCheck.error });
     }
