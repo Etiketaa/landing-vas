@@ -68,6 +68,12 @@ app.use('/api/admin/features', adminFeaturesRouter);
 app.use('/api/giftcard', requireFeature('gift_cards'), giftcardPublicRouter);
 app.use('/api/admin/giftcards', requireFeature('gift_cards'), adminGiftCardsRouter);
 app.use('/api/admin/cash', requireFeature('cash'), adminCashRouter);
+// El dashboard del panel pide /api/admin/dashboard. Sin esta línea esa URL
+// cae en el catch-all de abajo y devuelve el HTML del sitio con status 200,
+// así que el panel cree que le respondió bien y deja los contadores en 0.
+// Va aparte del requireFeature('cash') a propósito: el resumen del día se
+// necesita aunque la etapa de caja todavía esté apagada.
+app.use('/api/admin', adminCashRouter);
 // El orden importa: employeeBookingsRouter exige token en todas sus rutas, así
 // que si se montara antes que /auth, el login caería en ese middleware y
 // respondería "Token requerido" en vez de autenticar.
