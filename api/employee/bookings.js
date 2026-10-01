@@ -1,37 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const supabase = require('../../lib/supabase');
+const { requireEmployee } = require('../../lib/auth');
+const { forEmployee } = require('../../lib/colors');
 
-async function requireEmployeeAuth(req, res, next) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Token requerido' });
-  }
-
-  const token = authHeader.replace('Bearer ', '');
-
-  const { data: session, error } = await supabase
-    .from('employee_sessions')
-    .select('*')
-    .eq('token', token)
-    .gt('expires_at', new Date().toISOString())
-    .single();
-
-  if (error || !session) {
-    return res.status(401).json({ error: 'Sesion invalida o expirada' });
-  }
-
-  const { data: employee } = await supabase
-    .from('employees')
-    .select('*')
-    .eq('id', session.employee_id)
-    .single();
-
-  req.employee = employee;
-  next();
-}
-
-router.use(requireEmployeeAuth);
+// La profesional ve únicamente sus propios turnos: el filtro por employee_id
+// sale de la cuenta verificada, no de un parámetro que ella pueda cambiar.
+router.use(requireEmployee);
 
 router.get('/bookings', async (req, res) => {
   try {
@@ -80,11 +55,24 @@ router.put('/bookings/:id/status', async (req, res) => {
       return res.status(400).json({ error: 'Estado no permitido' });
     }
 
-    const { data: booking } = await supabase
+    // Postgres rechaza un id que no sea uuid con un error de sintaxis, que
+    // llegaba al catch y se traducía en un 500 sin contexto. Se valida antes.
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id || '')) {
+      return res.status(404).json({ error: 'El turno no existe' });
+    }
+
+    const { data: booking, error: findErr } = await supabase
       .from('bookings')
-      .select('employee_id')
+      .select('employee_id, booking_date, booking_time, client_name')
       .eq('id', id)
-      .single();
+      .maybeSingle();
+
+    if (findErr) throw findErr;
+
+    // Antes esto reventaba con TypeError si el turno no existía y devolvía 500.
+    if (!booking) {
+      return res.status(404).json({ error: 'El turno no existe' });
+    }
 
     if (booking.employee_id !== req.employee.id) {
       return res.status(403).json({ error: 'No autorizado' });
@@ -98,14 +86,21 @@ router.put('/bookings/:id/status', async (req, res) => {
       .single();
 
     if (error) throw error;
-    res.json(data);
+
+    console.log(
+      `[empleado] ${req.employee.name} marco ${booking.booking_date} ${booking.booking_time} ` +
+      `de ${booking.client_name} como ${status}`
+    );
+
+    res.json({ ...data, color: forEmployee(req.employee) });
   } catch (err) {
+    console.error('Error al actualizar reserva de profesional:', err.message);
     res.status(500).json({ error: 'Error al actualizar reserva' });
   }
 });
 
 router.get('/profile', async (req, res) => {
-  res.json(req.employee);
+  res.json({ ...req.employee, color: forEmployee(req.employee) });
 });
 
 module.exports = router;

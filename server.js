@@ -68,8 +68,11 @@ app.use('/api/admin/features', adminFeaturesRouter);
 app.use('/api/giftcard', requireFeature('gift_cards'), giftcardPublicRouter);
 app.use('/api/admin/giftcards', requireFeature('gift_cards'), adminGiftCardsRouter);
 app.use('/api/admin/cash', requireFeature('cash'), adminCashRouter);
-app.use('/api/employee', requireFeature('employee_panel'), employeeBookingsRouter);
+// El orden importa: employeeBookingsRouter exige token en todas sus rutas, así
+// que si se montara antes que /auth, el login caería en ese middleware y
+// respondería "Token requerido" en vez de autenticar.
 app.use('/api/employee/auth', requireFeature('employee_panel'), employeeAuthRouter);
+app.use('/api/employee', requireFeature('employee_panel'), employeeBookingsRouter);
 app.use('/api/payment', paymentRouter);
 
 app.get('/{*splat}', (req, res) => {

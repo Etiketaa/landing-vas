@@ -447,7 +447,11 @@
         var classes = 'calendar-day' + (isToday ? ' today' : '') + (isSelected ? ' selected' : '');
         html += '<div class="' + classes + '" onclick="selectedDate=\'' + dateStr + '\';loadCalendar()">';
         html += '<div class="day-num">' + day + '</div>';
-        for (var j = 0; j < Math.min(dayBookings.length, 3); j++) html += '<span class="day-dot"></span>';
+        for (var j = 0; j < Math.min(dayBookings.length, 3); j++) {
+          var b = dayBookings[j];
+          var color = b.color || '#9a9a9a';
+          html += '<span class="day-dot" style="background:' + color + '"></span>';
+        }
         if (dayBookings.length > 0) html += '<div class="day-count">' + dayBookings.length + ' turno(s)</div>';
         html += '</div>';
       }
@@ -465,7 +469,8 @@
         } else {
           actions = '-';
         }
-        return '<tr><td><strong>' + b.booking_time + '</strong></td><td>' + b.client_name + '</td><td>' + (b.services ? b.services.name : '-') + '</td><td>' + (b.employees ? b.employees.name : 'Sin asignar') + '</td><td>$' + b.final_price + (b.deposit_amount ? '<br><small style="color:#856404">Seña: $' + b.deposit_amount + '</small>' : '') + '</td><td><span class="badge badge-' + b.status + '">' + b.status + '</span></td><td>' + actions + '</td></tr>';
+        var profColor = b.color || '#9a9a9a';
+        return '<tr><td><strong>' + b.booking_time + '</strong></td><td>' + b.client_name + '</td><td>' + (b.services ? b.services.name : '-') + '</td><td style="color:' + profColor + ';font-weight:600">' + (b.employees ? b.employees.name : 'Sin asignar') + '</td><td>$' + b.final_price + (b.deposit_amount ? '<br><small style="color:#856404">Seña: $' + b.deposit_amount + '</small>' : '') + '</td><td><span class="badge badge-' + b.status + '">' + b.status + '</span></td><td>' + actions + '</td></tr>';
       }).join('') + '</tbody></table></div>'; }
       document.getElementById('calendarView').innerHTML = html;
     }

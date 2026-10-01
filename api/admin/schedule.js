@@ -107,7 +107,7 @@ router.get('/bookings', async (req, res) => {
 
     let query = supabase
       .from('bookings')
-      .select('*, services(name, duration_minutes), employees(name)');
+      .select('*, services(name, duration_minutes), employees(id, name)');
 
     if (date) query = query.eq('booking_date', date);
     if (status) query = query.eq('status', status);
@@ -119,7 +119,11 @@ router.get('/bookings', async (req, res) => {
     const { data, error } = await query.order('booking_date').order('booking_time');
 
     if (error) throw error;
-    res.json(data);
+
+    // El color viaja con cada turno para que la agenda pueda pintar de un vistazo
+    // quién atiende cada uno. Se calcula del id de la profesional acá y no en el
+    // navegador, para que el admin y cada profesional vean el mismo color.
+    res.json((data || []).map((b) => ({ ...b, color: forEmployee(b.employees) })));
   } catch (err) {
     res.status(500).json({ error: 'Error al obtener reservas' });
   }
