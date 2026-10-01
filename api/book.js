@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../lib/supabase');
 const { calculatePrice } = require('../lib/pricing');
-const { validateBookingTime } = require('../lib/schedule');
+const { findAvailableEmployee } = require('../lib/schedule');
 const { expireUnpaidBookings } = require('../lib/expire-unpaid');
 
 const OWNER_WHATSAPP = '5492914140982';
@@ -49,13 +49,14 @@ router.post('/', async (req, res) => {
 
     // A quién se le asigna el turno.
     //
-    // Antes se tomaba la primera profesional que hiciera ese servicio y listo,
-    // así que con cuatro en el centro todas las reservas de un mismo servicio
-    // caían siempre en la misma y las otras no tenían con qué trabajar.
-    //
     // Si la clienta eligió profesional, se respeta, pero sólo si realmente
     // ofrece ese servicio: mandar un employee_id cualquiera por el body no
     // alcanza para colar a alguien que no lo hace.
+    //
+    // Sin preferencia se elige, entre todas las que hacen el servicio, la
+    // primera que esté libre a esa hora. Antes se tomaba la primera de la
+    // lista y, si justo estaba ocupada, se rechazaba la reserva aunque otra
+    // tuviera lugar; con varias profesionales por servicio eso era un bug.
     const { data: elegidas } = await supabase
       .from('employee_services')
       .select('employee_id')
@@ -67,23 +68,36 @@ router.post('/', async (req, res) => {
       .eq('active', true);
 
     const idsActivos = new Set((habilitadas.data || []).map(e => e.id));
-    const candidatas = (elegidas || []).map(e => e.employee_id).filter(id => idsActivos.has(id));
+    const candidatas = (elegidas || [])
+      .map(e => e.employee_id)
+      .filter(id => idsActivos.has(id));
 
-    let employee_id = null;
-
+    let candidatos;
     if (employee_id_requested) {
       if (!candidatas.includes(employee_id_requested)) {
         return res.status(400).json({
           error: 'La profesional elegida no ofrece ese servicio'
         });
       }
-      employee_id = employee_id_requested;
+      candidatos = [employee_id_requested];
     } else {
-      // Sin preferencia: la primera que haga el servicio y esté activa. El
-      // horario se valida contra ella más abajo, así que si está ocupada la
-      // clienta ve el horario libre en la agenda y reintenta.
-      employee_id = candidatas[0] || null;
+      candidatos = candidatas;
     }
+
+    // Valida el horario de atención y, a la vez, resuelve a qué profesional
+    // asignarle el turno: se queda con la primera candidata libre durante toda
+    // la duración del servicio. Sin candidatas valida contra todo el centro.
+    const timeCheck = await findAvailableEmployee(
+      date,
+      time,
+      priceInfo.duration_minutes,
+      candidatos
+    );
+    if (!timeCheck.ok) {
+      return res.status(timeCheck.status).json({ error: timeCheck.error });
+    }
+
+    const employee_id = timeCheck.employeeId;
 
     let professionalBank = null;
     if (employee_id) {
@@ -93,23 +107,6 @@ router.post('/', async (req, res) => {
         .eq('id', employee_id)
         .maybeSingle();
       professionalBank = proData;
-    }
-
-    // Valida contra el horario de atención real y solapamientos por duración.
-    // Antes solo comparaba `booking_time` exacto, así que un turno de 90 min
-    // no bloqueaba el slot siguiente y se podían superponer reservas.
-    //
-    // El solapamiento se evalúa contra esta profesional y no contra el centro:
-    // con cuatro trabajando en paralelo, una reserva tomaba el horario para
-    // todas y las otras no podían ser atendidas a la misma hora.
-    const timeCheck = await validateBookingTime(
-      date,
-      time,
-      priceInfo.duration_minutes,
-      employee_id
-    );
-    if (!timeCheck.ok) {
-      return res.status(timeCheck.status).json({ error: timeCheck.error });
     }
 
     const initialStatus = depositAmount > 0 ? 'pending_payment' : 'confirmed';
@@ -249,6 +246,7 @@ ${depositAmount > 0 ? `Seña: $${depositAmount.toLocaleString('es-AR')}` : ''}`;
       booking: {
         id: booking.id,
         service: priceInfo.service_name,
+        professional: professionalBank?.name || null,
         date,
         time,
         final_price: priceInfo.final_price,

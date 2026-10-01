@@ -41,6 +41,9 @@ const closeBtn = document.getElementById("booking-close");
 const form = document.getElementById("booking-form");
 const msg = document.getElementById("booking-msg");
 const serviceSelect = document.getElementById("booking-service");
+const employeeSelect = document.getElementById("booking-employee");
+const employeeGroup = document.getElementById("employee-group");
+const employeeHint = document.getElementById("employee-hint");
 const dateInput = document.getElementById("booking-date");
 const timeSelect = document.getElementById("booking-time");
 const priceDisplay = document.getElementById("price-display");
@@ -50,6 +53,7 @@ const priceRules = document.getElementById("price-rules");
 const submitBtn = document.getElementById("booking-submit");
 
 let services = [];
+let serviceEmployees = [];
 let currentPriceData = null;
 
 function openModal() {
@@ -95,6 +99,47 @@ async function loadServices() {
   }
 }
 
+// ==================== PROFESSIONALS LOADING ====================
+// Profesionales que ofrecen el servicio elegido. La opción por defecto es
+// "Cualquiera disponible": el backend asigna a la primera que tenga lugar a
+// esa hora. Si la clienta prefiere a una en particular, la elige acá.
+async function loadProfessionals() {
+  const serviceId = serviceSelect.value;
+  serviceEmployees = [];
+
+  if (!serviceId) {
+    employeeGroup.style.display = "none";
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/services/${serviceId}/employees`);
+    if (!res.ok) throw new Error("Error al cargar profesionales");
+    serviceEmployees = await res.json();
+  } catch (err) {
+    console.error("Error loading professionals:", err);
+    serviceEmployees = [];
+  }
+
+  employeeSelect.innerHTML = '<option value="">Cualquiera disponible</option>';
+  serviceEmployees.forEach((e) => {
+    const opt = document.createElement("option");
+    opt.value = e.id;
+    opt.textContent = e.name;
+    employeeSelect.appendChild(opt);
+  });
+
+  // Con una sola profesional no tiene sentido preguntar: queda elegida.
+  if (serviceEmployees.length === 1) {
+    employeeSelect.value = serviceEmployees[0].id;
+  }
+
+  employeeGroup.style.display = serviceEmployees.length > 0 ? "block" : "none";
+  employeeHint.textContent = serviceEmployees.length > 1
+    ? "Elegí una profesional, o dejá “Cualquiera” para ver todos los horarios."
+    : "";
+}
+
 // ==================== SLOTS LOADING ====================
 function getMinDate() {
   const today = new Date();
@@ -109,6 +154,7 @@ dateInput.min = getMinDate();
 async function loadAvailableSlots() {
   const serviceId = serviceSelect.value;
   const date = dateInput.value;
+  const employeeId = employeeSelect.value;
 
   if (!serviceId || !date) {
     timeSelect.innerHTML = '<option value="">Elegi fecha y servicio</option>';
@@ -121,7 +167,10 @@ async function loadAvailableSlots() {
   timeSelect.disabled = true;
 
   try {
-    const res = await fetch(`/api/available-slots?service_id=${serviceId}&date=${date}`);
+    const params = new URLSearchParams({ service_id: serviceId, date });
+    if (employeeId) params.set("employee_id", employeeId);
+
+    const res = await fetch(`/api/available-slots?${params.toString()}`);
     if (!res.ok) throw new Error("Error al cargar horarios");
     const data = await res.json();
 
@@ -143,7 +192,14 @@ async function loadAvailableSlots() {
     availableSlots.forEach((slot) => {
       const opt = document.createElement("option");
       opt.value = slot.time;
-      opt.textContent = slot.time;
+      // Sin profesional elegida, mostramos quién tiene lugar a esa hora: así
+      // se ve de un vistazo que el mismo servicio lo puede hacer otra persona.
+      const libres = (slot.available_employees || [])
+        .map((id) => (data.employees.find((e) => e.id === id) || {}).name)
+        .filter(Boolean);
+      opt.textContent = (!employeeId && libres.length > 0)
+        ? `${slot.time} — ${libres.join(", ")}`
+        : slot.time;
       timeSelect.appendChild(opt);
     });
     timeSelect.disabled = false;
@@ -184,7 +240,13 @@ timeSelect?.addEventListener("change", () => {
   if (currentPriceData) renderPriceForTime(currentPriceData, timeSelect.value);
 });
 
-serviceSelect?.addEventListener("change", loadAvailableSlots);
+serviceSelect?.addEventListener("change", async () => {
+  // Primero se recarga la lista de profesionales, porque al cambiar de
+  // servicio la elegida anterior puede ya no ofrecerlo.
+  await loadProfessionals();
+  loadAvailableSlots();
+});
+employeeSelect?.addEventListener("change", loadAvailableSlots);
 dateInput?.addEventListener("change", loadAvailableSlots);
 
 // ==================== BOOKING SUBMIT ====================
@@ -194,6 +256,7 @@ form?.addEventListener("submit", async (e) => {
   const name = document.getElementById("booking-name").value.trim();
   const contact = document.getElementById("booking-contact").value.trim();
   const service_id = serviceSelect.value;
+  const employee_id = employeeSelect.value;
   const date = dateInput.value;
   const time = timeSelect.value;
   const notes = document.getElementById("booking-notes").value.trim();
@@ -212,7 +275,17 @@ form?.addEventListener("submit", async (e) => {
     const res = await fetch("/api/book", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, contact, service_id, date, time, notes }),
+      body: JSON.stringify({
+        name,
+        contact,
+        service_id,
+        date,
+        time,
+        notes,
+        // Si no eligió, no se manda el campo: el backend asigna a la primera
+        // profesional libre en ese horario.
+        ...(employee_id ? { employee_id } : {}),
+      }),
     });
 
     const data = await res.json();
@@ -236,7 +309,7 @@ form?.addEventListener("submit", async (e) => {
         <div style="text-align: center;">
           <p style="margin-bottom: 6px;">Turno reservado ✨</p>
           <p style="font-size: 13px; color: #666; margin-bottom: 14px;">
-            ${bk.service} · ${bk.date} a las ${bk.time}
+            ${bk.service}${bk.professional ? ` con ${bk.professional}` : ''} · ${bk.date} a las ${bk.time}
           </p>
 
           <div style="background: #fff5f5; border: 1px solid #f4c7c3; border-radius: 10px; padding: 14px; margin-bottom: 14px; text-align: left;">
@@ -288,6 +361,9 @@ form?.addEventListener("submit", async (e) => {
 
     form.reset();
     priceDisplay.style.display = "none";
+    employeeGroup.style.display = "none";
+    employeeSelect.innerHTML = '<option value="">Cualquiera disponible</option>';
+    serviceEmployees = [];
     timeSelect.innerHTML = '<option value="">Elegi fecha y servicio</option>';
     timeSelect.disabled = true;
   } catch (err) {
