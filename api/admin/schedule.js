@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../../lib/supabase');
 const { requireAdmin } = require('../../lib/auth');
+const { forEmployee } = require('../../lib/colors');
 
 router.use(requireAdmin);
 
@@ -125,6 +126,7 @@ router.get('/bookings', async (req, res) => {
     // navegador, para que el admin y cada profesional vean el mismo color.
     res.json((data || []).map((b) => ({ ...b, color: forEmployee(b.employees) })));
   } catch (err) {
+    console.error('Error al obtener reservas:', err.message);
     res.status(500).json({ error: 'Error al obtener reservas' });
   }
 });

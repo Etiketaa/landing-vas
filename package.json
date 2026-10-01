@@ -9,7 +9,10 @@
     "release": "node scripts/release.js",
     "release:status": "node scripts/release.js status",
     "release:plan": "node scripts/release.js plan",
-    "release:next": "node scripts/release.js next"
+    "release:next": "node scripts/release.js next",
+    "demo": "node scripts/seed-demo.js",
+    "demo:cargar": "node scripts/seed-demo.js --confirmar",
+    "demo:borrar": "node scripts/seed-demo.js --limpiar --confirmar"
   },
   "keywords": [],
   "author": "",

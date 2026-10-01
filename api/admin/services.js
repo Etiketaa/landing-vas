@@ -386,13 +386,6 @@ router.delete('/employees/:id', async (req, res) => {
       return res.status(404).json({ error: 'La profesional no existe' });
     }
 
-    // La cuenta de login se da de baja en ambos caminos. Si quedara viva, el JWT
-    // que esa profesional ya tenga en el navegador seguiría funcionando.
-    const baja = await disableLogin(id);
-    if (!baja.disabled) {
-      await deleteLogin(id);
-    }
-
     // Con turnos en el historial no se puede borrar la fila: bookings tiene una
     // clave foránea contra employees y Postgres la rechaza. Y no tiene sentido
     // perder el pasado de las comisiones ni los comprobantes de seña. Se da de
@@ -404,6 +397,9 @@ router.delete('/employees/:id', async (req, res) => {
       .eq('employee_id', id);
 
     if (turnos > 0) {
+      // La cuenta se banea, no se borra: el id de cuenta es el mismo que
+      // empareja los turnos viejos con la profesional.
+      await disableLogin(id);
       await supabase.from('employees').update({ active: false }).eq('id', id);
       await supabase.from('employee_services').delete().eq('employee_id', id);
 
@@ -417,6 +413,13 @@ router.delete('/employees/:id', async (req, res) => {
 
     const { error } = await supabase.from('employees').delete().eq('id', id);
     if (error) throw error;
+
+    // Sin historial la fila desaparece, así que la cuenta también. Antes se
+    // bannía primero y después se borraba la fila, con lo que la cuenta
+    // sobrevivia sin fila: el siguiente alta del mismo email rebotaba con
+    // "ese email ya tiene una cuenta creada" y había que entrar a borrarla a
+    // mano del panel de Supabase.
+    await deleteLogin(id);
 
     res.json({ message: `${professional.name} fue eliminada`, baja: false });
   } catch (err) {
