@@ -18,6 +18,6 @@
   ],
   "crons": [
     { "path": "/api/cron/send-reminders", "schedule": "0 8 * * *" },
-    { "path": "/api/cron/expire-bookings", "schedule": "*/5 * * * *" }
+    { "path": "/api/cron/expire-bookings", "schedule": "0 3 * * *" }
   ]
 }
