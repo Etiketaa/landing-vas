@@ -39,6 +39,154 @@ async function removeProof(path) {
   }
 }
 
+// ==================== MERCADOPAGO (ESQUELETO) ====================
+// Para activar: poner MP_ACCESS_TOKEN en .env y configurar webhook en
+// https://www.mercadopago.com.ar/developers/panel/notifications
+// apuntando a: https://tu-dominio.com/api/payment/mercadopago/webhook
+//
+// Flujo:
+// 1. Cliente elige "MercadoPago" en /pago/ -> POST /api/payment/mercadopago/preference
+//    con { bookingId, contact } -> devuelve { init_point, preference_id }.
+// 2. Cliente paga en MP -> MP dispara webhook -> POST /api/payment/mercadopago/webhook
+//    con { type: 'payment', data: { id: '...' } }.
+// 3. Backend busca payment en MP por id, chequea external_reference = bookingId,
+//    monto = deposit_amount, status = 'approved' -> confirma la reserva.
+//
+// HOY: devuelve 503 con mensaje claro. No rompe nada existente.
+
+// Función helper: crear preferencia de pago (mock hasta que pongas credenciales)
+async function createMercadoPagoPreference(booking) {
+  const accessToken = process.env.MP_ACCESS_TOKEN;
+  if (!accessToken) {
+    return {
+      ok: false,
+      mock: true,
+      error: 'MercadoPago no configurado: falta MP_ACCESS_TOKEN en variables de entorno.',
+      init_point: null,
+      preference_id: null
+    };
+  }
+
+  // TODO: cuando tengas el token, descomenta e implementa con SDK oficial:
+  // const mercadopago = require('mercadopago');
+  // mercadopago.configure({ access_token: accessToken });
+  // const preference = { ... };
+  // const response = await mercadopago.preferences.create(preference);
+  // return { ok: true, init_point: response.body.init_point, preference_id: response.body.id };
+
+  return {
+    ok: false,
+    mock: true,
+    error: 'MercadoPago esqueleto: conectá MP_ACCESS_TOKEN para activar.',
+    init_point: null,
+    preference_id: null
+  };
+}
+
+// Función helper: verificar payment en MP (mock)
+async function verifyMercadoPagoPayment(paymentId) {
+  const accessToken = process.env.MP_ACCESS_TOKEN;
+  if (!accessToken) {
+    return { ok: false, error: 'MP_ACCESS_TOKEN no configurada', status: null, external_reference: null };
+  }
+
+  // TODO: mercadopago.payment.findById(paymentId)
+  // return { ok: true, status: payment.status, external_reference: payment.external_reference, amount: payment.transaction_amount };
+
+  return { ok: false, error: 'MercadoPago esqueleto: conectá MP_ACCESS_TOKEN para activar.', status: null, external_reference: null };
+}
+
+// POST /api/payment/mercadopago/preference
+// Body: { bookingId, contact }
+// Devuelve: { init_point, preference_id } para redirigir al cliente
+router.post('/mercadopago/preference', async (req, res) => {
+  try {
+    const { bookingId, contact } = req.body;
+
+    if (!bookingId || !contact) {
+      return res.status(400).json({ error: 'bookingId y contact requeridos' });
+    }
+
+    const { data: booking } = await supabase
+      .from('bookings')
+      .select('id, deposit_amount, deposit_deadline, status, client_contact, professional:employees(name,cbu,alias,titular,bank_name), services(name)')
+      .eq('id', bookingId)
+      .single();
+
+    if (!booking) return res.status(404).json({ error: 'Reserva no encontrada' });
+    if (booking.client_contact !== String(contact).trim()) return res.status(403).json({ error: 'No autorizado' });
+    if (booking.status !== 'pending_payment') return res.status(400).json({ error: 'Esta reserva no está esperando pago' });
+
+    const pref = await createMercadoPagoPreference(booking);
+
+    if (!pref.ok) {
+      return res.status(503).json({
+        error: pref.error,
+        hint: 'Configurá MP_ACCESS_TOKEN y el webhook en el panel de MercadoPago.'
+      });
+    }
+
+    res.json({ init_point: pref.init_point, preference_id: pref.preference_id });
+  } catch (err) {
+    console.error('Error creando preferencia MP:', err.message);
+    res.status(500).json({ error: 'Error interno' });
+  }
+});
+
+// POST /api/payment/mercadopago/webhook
+// Webhook de MercadoPago (notificación de payment)
+// Verifica el payment, matchea external_reference con bookingId, y confirma
+router.post('/mercadopago/webhook', async (req, res) => {
+  try {
+    // MP envía { type: 'payment', data: { id: '12345' } } o { action: 'payment.updated', ... }
+    const notification = req.body;
+    const paymentId = notification?.data?.id || notification?.id;
+
+    if (!paymentId) {
+      console.log('Webhook MP sin paymentId:', JSON.stringify(notification));
+      return res.sendStatus(200); // ACK para que MP no reintente
+    }
+
+    const verification = await verifyMercadoPagoPayment(paymentId);
+
+    if (!verification.ok || verification.status !== 'approved') {
+      console.log('Payment MP no aprobado:', verification);
+      return res.sendStatus(200);
+    }
+
+    const bookingId = verification.external_reference;
+    if (!bookingId) {
+      console.log('Payment MP sin external_reference:', verification);
+      return res.sendStatus(200);
+    }
+
+    // Confirmar reserva atómicamente
+    const { data: booking, error } = await supabase
+      .from('bookings')
+      .update({
+        status: 'confirmed',
+        payment_method: 'mercadopago',
+        payment_reference: paymentId,
+        paid: true
+      })
+      .eq('id', bookingId)
+      .eq('status', 'pending_payment') // solo si sigue pendiente
+      .select()
+      .single();
+
+    if (error || !booking) {
+      console.log('No se pudo confirmar reserva por MP:', bookingId, error?.message);
+    } else {
+      console.log('Reserva confirmada por MercadoPago:', bookingId);
+    }
+
+    res.sendStatus(200); // ACK obligatorio
+  } catch (err) {
+    console.error('Error en webhook MP:', err.message);
+    res.sendStatus(200); // siempre 200 para que MP no reintente en bucle
+  }
+});
+
 // ==================== LECTURA ====================
 // Solo el admin o la propia clienta de la reserva. Antes esto era público: con
 // el UUID de la reserva se leían nombre, teléfono y los datos bancarios (CBU y
@@ -70,7 +218,7 @@ router.get('/:bookingId', async (req, res) => {
     if (booking.employee_id) {
       const { data: proData } = await supabase
         .from('employees')
-        .select('name, cbu, alias')
+        .select('name, cbu, alias, titular, bank_name')
         .eq('id', booking.employee_id)
         .single();
       booking.professional = proData;

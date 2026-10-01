@@ -195,7 +195,7 @@ router.post('/employees', async (req, res) => {
   let employee = null;
 
   try {
-    const { name, email, password, phone, cbu, alias, active, service_ids } = req.body;
+    const { name, email, password, phone, cbu, alias, titular, bank_name, active, service_ids } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Nombre requerido' });
@@ -235,6 +235,8 @@ router.post('/employees', async (req, res) => {
         phone: phone || null,
         cbu: cbu || null,
         alias: alias || null,
+        titular: titular || null,
+        bank_name: bank_name || null,
         active: active === undefined ? true : active
       })
       .select()
@@ -291,19 +293,22 @@ router.post('/employees', async (req, res) => {
 router.put('/employees/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, password, phone, cbu, alias, active, service_ids, color } = req.body;
+    const { name, email, password, phone, cbu, alias, titular, bank_name, active, service_ids, color } = req.body;
 
     const updateData = {
       name,
       phone: phone || null,
       cbu: cbu || null,
       alias: alias || null,
+      titular: titular || null,
+      bank_name: bank_name || null,
       active
     };
 
     // Sólo se escribe la columna si el panel la mandó. Así el endpoint sigue
-    // funcionando antes de aplicar la migración 003, donde `color` todavía no
-    // existe: mandar la columna inexistente haría fallar el UPDATE entero.
+    // funcionando antes de aplicar la migración 003/005, donde `color`, `titular`,
+    // `bank_name` todavía no existen: mandar la columna inexistente haría
+    // fallar el UPDATE entero.
     if (typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color)) {
       updateData.color = color;
     }

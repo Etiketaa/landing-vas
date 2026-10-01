@@ -175,6 +175,8 @@
       
       <div class="bank-info" style="background:#e8f5e9;border:1px solid #c8e6c9;border-radius:12px;padding:16px;margin-bottom:20px">
         <h3 style="font-family:'Playfair Display',serif;color:#2d2013;font-size:14px;margin-bottom:12px">Datos para transferencia</h3>
+        <div class="info-row"><span class="label">Titular</span><span class="value" id="bankTitular">-</span></div>
+        <div class="info-row"><span class="label">Banco</span><span class="value" id="bankName">-</span></div>
         <div class="info-row"><span class="label">CBU</span><span class="value" id="bankCbu">-</span></div>
         <div class="info-row"><span class="label">Alias</span><span class="value" id="bankAlias">-</span></div>
         <div class="info-row"><span class="label">Monto</span><span class="value" id="bankAmount" style="color:#28a745;font-size:18px">$0</span></div>
@@ -262,6 +264,8 @@
         document.getElementById('infoTime').textContent = bookingData.booking_time;
         document.getElementById('infoPrice').textContent = '$' + bookingData.final_price;
         document.getElementById('depositAmount').textContent = '$' + bookingData.deposit_amount;
+        document.getElementById('bankTitular').textContent = bookingData.professional?.titular || '-';
+        document.getElementById('bankName').textContent = bookingData.professional?.bank_name || '-';
         document.getElementById('bankCbu').textContent = bookingData.professional?.cbu || '-';
         document.getElementById('bankAlias').textContent = bookingData.professional?.alias || '-';
         document.getElementById('bankAmount').textContent = '$' + bookingData.deposit_amount;
