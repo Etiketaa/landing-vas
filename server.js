@@ -45,6 +45,8 @@ const adminGiftCardsRouter = require('./api/admin/giftcards');
 const adminFeaturesRouter = require('./api/admin/features');
 const employeeAuthRouter = require('./api/employee/auth');
 const employeeBookingsRouter = require('./api/employee/bookings');
+const employeeProfileRouter = require('./api/employee/profile');
+const professionalsRouter = require('./api/professionals');
 const paymentRouter = require('./api/payment');
 const { requireFeature } = require('./lib/features');
 
@@ -79,6 +81,8 @@ app.use('/api/admin', adminCashRouter);
 // respondería "Token requerido" en vez de autenticar.
 app.use('/api/employee/auth', requireFeature('employee_panel'), employeeAuthRouter);
 app.use('/api/employee', requireFeature('employee_panel'), employeeBookingsRouter);
+app.use('/api/employee/profile', requireFeature('employee_panel'), employeeProfileRouter);
+app.use('/api/professionals', professionalsRouter);
 app.use('/api/payment', paymentRouter);
 
 app.get('/{*splat}', (req, res) => {
