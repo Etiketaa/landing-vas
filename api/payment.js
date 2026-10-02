@@ -135,17 +135,43 @@ router.post('/mercadopago/preference', async (req, res) => {
 });
 
 // POST /api/payment/mercadopago/webhook
-// Webhook de MercadoPago (notificación de payment)
-// Verifica el payment, matchea external_reference con bookingId, y confirma
+// Webhook de MercadoPago (notificación de payment).
+// Verifica el payment, matchea external_reference con bookingId, y confirma.
+//
+// MP firma cada llamada con x-signature: ts=...,v1=HMAC-SHA256(resourceId,KEY).
+// Cuando se active MP de verdad, hay que verificar esa firma antes de confiar
+// en el payload: si alguien conoce un paymentId (no es secreto), podría
+// confirmar reservas sin pagar. El esqueleto no lo hace porque no hay
+// clave de webhook todavía; es el primer paso al habilitar el feature.
 router.post('/mercadopago/webhook', async (req, res) => {
   try {
-    // MP envía { type: 'payment', data: { id: '12345' } } o { action: 'payment.updated', ... }
     const notification = req.body;
     const paymentId = notification?.data?.id || notification?.id;
 
     if (!paymentId) {
       console.log('Webhook MP sin paymentId:', JSON.stringify(notification));
       return res.sendStatus(200); // ACK para que MP no reintente
+    }
+
+    // Verificación de firma de MP. Solo corre si MP_WEBHOOK_KEY está
+    // configurada: si no, asumimos que la integración todavía no se activó.
+    if (process.env.MP_WEBHOOK_KEY) {
+      const ts = req.headers['x-signature']?.match(/ts=([0-9]+)/)?.[1];
+      const v1 = req.headers['x-signature']?.match(/v1=([a-f0-9]+)/)?.[1];
+      if (!ts || !v1) {
+        console.log('Webhook MP con firma faltante o malformada:', req.headers['x-signature']);
+        return res.status(401).json({ error: 'Firma inválida' });
+      }
+      // La verificación HMAC-SHA256 del resourceId con MP_WEBHOOK_KEY va acá.
+      // MP usa: HMAC-SHA256(`${id}.${ts}`, webhook_key)
+      // Referencia: https://www.mercadopago.com.ar/developers/panel/notifications/webhooks
+      const crypto = require('crypto');
+      const manifest = `${paymentId}.${ts}`;
+      const expected = crypto.createHmac('sha256', process.env.MP_WEBHOOK_KEY).update(manifest).digest('hex');
+      if (expected !== v1) {
+        console.log('Webhook MP con firma inválida:', { ts, v1, expected });
+        return res.status(401).json({ error: 'Firma inválida' });
+      }
     }
 
     const verification = await verifyMercadoPagoPayment(paymentId);

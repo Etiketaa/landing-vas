@@ -9,13 +9,26 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors({ origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : true }));
+// CORS: en producción solo se aceptan orígenes explícitos. Sin eso, cualquier
+// sitio podría pegarle a la API con credenciales de un navegador ajeno.
+const corsOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : (process.env.NODE_ENV === 'production' ? false : true);
+app.use(cors({ origin: corsOrigins }));
 // El comprobante de seña es la única carga binaria del sistema y llega como
 // data URL (base64, que engorda el archivo ~33%). Con el límite global de 1 MB
 // una foto de celular normal rebotaba con 413 y la clienta no podía pagar, así
 // que la seña obligatoria era impagable. Se registra antes del parser global y
 // sólo para esta ruta; el resto de la API sigue con 1 MB.
+// La subida de comprobante es la única carga binaria del sistema: si no se
+// limita, cualquiera puede hacer DoS subiendo fotos de 4-6 MB por request.
 app.use('/api/payment', express.json({ limit: '6mb' }));
+const paymentUploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { error: 'Demasiados intentos de subir comprobante' }
+});
+app.use('/api/payment', paymentUploadLimiter);
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
