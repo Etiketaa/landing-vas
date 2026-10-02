@@ -1,6 +1,8 @@
 # AGENTS.md — VAS Centro de Estética
 
 > Instrucciones compactas para futuras sesiones de OpenCode. Solo hechos que no son obvios desde el código.
+>
+> Para la reunión con la dueña del centro: **`RESUMEN-CLIENTE.md`** (qué funciona, qué está apagado, decisiones pendientes, accesos de demo).
 
 ---
 
