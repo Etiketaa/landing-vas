@@ -80,8 +80,10 @@ app.use('/api/admin', adminCashRouter);
 // que si se montara antes que /auth, el login caería en ese middleware y
 // respondería "Token requerido" en vez de autenticar.
 app.use('/api/employee/auth', requireFeature('employee_panel'), employeeAuthRouter);
-app.use('/api/employee', requireFeature('employee_panel'), employeeBookingsRouter);
+// El router de perfil va ANTES que el de bookings: el de bookings tiene GET /profile
+// y se monta en /api/employee, así que interceptaría /api/employee/profile si va después.
 app.use('/api/employee/profile', requireFeature('employee_panel'), employeeProfileRouter);
+app.use('/api/employee', requireFeature('employee_panel'), employeeBookingsRouter);
 app.use('/api/professionals', professionalsRouter);
 app.use('/api/payment', paymentRouter);
 
