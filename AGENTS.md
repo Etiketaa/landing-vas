@@ -59,6 +59,21 @@ npm run demo:borrar      # limpia demo
 
 ---
 
+## Variables de entorno vs. migraciones — no confundir
+
+Son dos sistemas distintos y van a lugares distintos. Un nuevo deploy no requiere
+tocar el SQL Editor; una nueva columna o tabla sí.
+
+| Qué | Dónde | Cuándo |
+|---|---|---|
+| `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `CRON_SECRET`, `ALLOWED_ORIGINS`, `MP_*`, `GOOGLE_*`, `GEMINI_API_KEY`, `RESEND_API_KEY` | **Vercel** → Project → Settings → Environment Variables | Una vez o al rotar claves |
+| `employee_profiles`, `recibe_por_cuenta_propia`, `google_refresh_token`, `titular`, `bank_name`, `color` | **Supabase** → SQL Editor (migraciones `001`–`008`) | Una vez por migración |
+| Buckets de Storage (`payment-proofs`, `employee-profiles`) | Ya creados en Supabase → verificar con `supabase.storage.listBuckets()` | Al crear proyecto nuevo |
+
+Hoy: **todo aplicado.** Variables en Vercel → pendientes las nuevas de `MP_`/`GOOGLE_`/`GEMINI_`/`CRON_SECRET`. Nada falta en Supabase.
+
+---
+
 ## Tests existentes (no están en package.json)
 
 ```bash
