@@ -514,9 +514,14 @@
         <!-- Servicios -->
         <div class="profile-section">
           <h3>Mis Servicios</h3>
-          <p style="font-size:13px;color:#8b7355;margin-bottom:12px">Listá los servicios que brindás con su duración y una breve descripción.</p>
+          <p style="font-size:13px;color:#8b7355;margin-bottom:12px">Estos son los servicios que brindás. Podés anexar o quitar servicios.</p>
           <div id="servicesList"></div>
-          <button class="btn-add-service" onclick="addServiceRow()">+ Agregar Servicio</button>
+          <div style="margin-top:12px">
+            <select id="serviceSelect" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px">
+              <option value="">Seleccionar servicio para anexar...</option>
+            </select>
+            <button class="btn-add-service" onclick="addServiceFromSelect()">+ Anexar</button>
+          </div>
         </div>
         
         <button class="btn-save-profile" onclick="saveProfile()">Guardar Perfil</button>
@@ -696,8 +701,8 @@
       // Galería
       renderGallery();
       
-      // Servicios
-      renderServices();
+      // Servicios (carga asignados + disponibles)
+      loadServices();
     }
 
     function renderGallery() {
@@ -717,41 +722,80 @@
       }).join('');
     }
 
+    async function loadServices() {
+      var res = await api('/api/employee/services', 'GET');
+      if (res.error) {
+        console.error('Error cargando servicios:', res.error);
+        return;
+      }
+      profile.services = res;
+      renderServices();
+      
+      // Cargar servicios disponibles para anexar
+      var availRes = await api('/api/employee/services/available', 'GET');
+      if (availRes.error) {
+        console.error('Error cargando servicios disponibles:', availRes.error);
+        return;
+      }
+      var select = document.getElementById('serviceSelect');
+      select.innerHTML = '<option value="">Seleccionar servicio para anexar...</option>';
+      availRes.forEach(function(svc) {
+        var opt = document.createElement('option');
+        opt.value = svc.id;
+        opt.textContent = svc.name + ' - $' + svc.base_price + ' (' + svc.duration_minutes + ' min)';
+        select.appendChild(opt);
+      });
+    }
+
     function renderServices() {
       var list = document.getElementById('servicesList');
       var services = profile?.services || [];
       
       if (!services.length) {
-        list.innerHTML = '<p style="color:#8b7355;font-size:13px">No tenés servicios cargados</p>';
+        list.innerHTML = '<p style="color:#8b7355;font-size:13px">No tenés servicios asignados. Anexá uno desde el selector de abajo.</p>';
         return;
       }
       
-      list.innerHTML = services.map(function(svc, idx) {
+      list.innerHTML = services.map(function(svc) {
         return '<div class="service-item">' +
-          '<input type="text" placeholder="Nombre del servicio" value="' + (svc.name || '').replace(/"/g, '&quot;') + '" data-idx="' + idx + '" data-field="name">' +
-          '<input type="number" placeholder="Minutos" value="' + (svc.duration_minutes || '') + '" data-idx="' + idx + '" data-field="duration_minutes" style="max-width:100px">' +
-          '<input type="text" placeholder="Descripción breve" value="' + (svc.description || '').replace(/"/g, '&quot;') + '" data-idx="' + idx + '" data-field="description">' +
-          '<button class="btn-remove" onclick="removeServiceRow(' + idx + ')">×</button>' +
+          '<div style="flex:1">' +
+            '<strong>' + (svc.name || '') + '</strong>' +
+            '<div style="font-size:12px;color:#8b7355">$' + svc.base_price + ' · ' + svc.duration_minutes + ' min' + (svc.category ? ' · ' + svc.category : '') + '</div>' +
+          '</div>' +
+          '<button class="btn-remove" onclick="removeService(\'' + svc.service_id + '\')">Quitar</button>' +
         '</div>';
       }).join('');
     }
 
-    function addServiceRow() {
-      var list = document.getElementById('servicesList');
-      var idx = list.children.length;
-      var div = document.createElement('div');
-      div.className = 'service-item';
-      div.innerHTML = 
-        '<input type="text" placeholder="Nombre del servicio" data-idx="' + idx + '" data-field="name">' +
-        '<input type="number" placeholder="Minutos" data-idx="' + idx + '" data-field="duration_minutes" style="max-width:100px">' +
-        '<input type="text" placeholder="Descripción breve" data-idx="' + idx + '" data-field="description">' +
-        '<button class="btn-remove" onclick="this.parentElement.remove()">×</button>';
-      list.appendChild(div);
+    async function addServiceFromSelect() {
+      var select = document.getElementById('serviceSelect');
+      var serviceId = select.value;
+      if (!serviceId) {
+        alert('Seleccioná un servicio primero');
+        return;
+      }
+      
+      var res = await api('/api/employee/services', 'POST', { service_id: serviceId });
+      if (res.error) {
+        alert('Error anexando servicio: ' + res.error);
+        return;
+      }
+      
+      showSuccess('Servicio anexado: ' + res.service.name);
+      loadServices();
     }
 
-    function removeServiceRow(idx) {
-      var row = document.querySelector('.service-item[data-idx="' + idx + '"]');
-      if (row) row.remove();
+    async function removeService(serviceId) {
+      if (!confirm('¿Quitar este servicio de tu lista?')) return;
+      
+      var res = await api('/api/employee/services/' + serviceId, 'DELETE');
+      if (res.error) {
+        alert('Error quitando servicio: ' + res.error);
+        return;
+      }
+      
+      showSuccess('Servicio quitado');
+      loadServices();
     }
 
     async function uploadProfilePhoto(input) {
@@ -818,26 +862,14 @@
 
     async function saveProfile() {
       var bio = document.getElementById('profileBio').value;
-      
-      // Recoger servicios del DOM
-      var services = [];
-      document.querySelectorAll('#servicesList .service-item').forEach(function(row) {
-        var name = row.querySelector('[data-field="name"]').value.trim();
-        var duration = parseInt(row.querySelector('[data-field="duration_minutes"]').value) || 0;
-        var desc = row.querySelector('[data-field="description"]').value.trim();
-        if (name) {
-          services.push({ name: name, duration_minutes: duration, description: desc });
-        }
-      });
-      
-      var res = await api('/api/employee/profile', 'PUT', { bio: bio, services: services });
+
+      var res = await api('/api/employee/profile', 'PUT', { bio: bio });
       if (res.error) {
         alert('Error guardando perfil: ' + res.error);
         return;
       }
-      
+
       profile.bio = bio;
-      profile.services = services;
       showSuccess('Perfil guardado correctamente');
     }
 

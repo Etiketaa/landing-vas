@@ -12,7 +12,10 @@ const { expireUnpaidBookings } = require('../../lib/expire-unpaid');
 // tampoco hay barrido, y un turno abandonado seguiría bloqueando el horario.
 router.get('/', async (req, res) => {
   try {
-    const cronSecret = req.headers['x-cron-secret'] || req.query.secret;
+    // Vercel manda el CRON_SECRET como `authorization: Bearer <token>`, no como
+    // x-cron-secret. Aceptamos ambas formas.
+    const authHeader = req.headers['authorization'] || '';
+    const cronSecret = req.headers['x-cron-secret'] || req.query.secret || (authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null);
     if (process.env.NODE_ENV === 'production' && cronSecret !== process.env.CRON_SECRET) {
       return res.status(403).json({ error: 'Forbidden' });
     }
